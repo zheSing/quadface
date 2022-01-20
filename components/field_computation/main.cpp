@@ -25,6 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 /* LZ change
 - remove header QDesktopWidget
+- add variable extern "has_texture", "pathT"
+- add args "*.png", "*.jpg"
 */ 
 
 #include <QApplication>
@@ -50,7 +52,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 extern bool do_batch;
 extern bool has_features;
 extern bool has_features_fl;
-extern std::string pathM,pathS;
+extern bool has_texture;
+extern std::string pathM,pathS,pathT;
 
 extern bool do_remesh;
 extern int remesher_iterations;
@@ -236,6 +239,20 @@ int main(int argc, char *argv[])
         {
            loadConfigFile(pathTest.c_str());
            continue;
+        }
+        position=pathTest.find(".png");
+        if(position!=-1)
+        {
+            pathT=pathTest;
+            has_texture=true;
+            continue;
+        }
+        position=pathTest.find(".jpg");
+        if(position!=-1)
+        {
+            pathT=pathTest;
+            has_texture=true;
+            continue;
         }
     }
     //    loadConfigFile("basic_setup.txt");

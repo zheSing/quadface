@@ -28,6 +28,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - function updateGL() -> update()
 - function delta() -> -angleDelta().y()
 - OpenGL draw mode to DMFlat
+
+- add variable "has_texture", "pathT"
+- add header "feature_texture.h"
 */ 
 
 #include <GL/glew.h>
@@ -39,6 +42,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "glwidget.h"
 #include "mesh_manager.h"
 #include "fields/field_smoother.h"
+#include "feature_texture.h"
 #include "triangle_mesh_type.h"
 #include "poly_mesh_type.h"
 #include <wrap/qt/trackball.h>
@@ -62,6 +66,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 std::string pathM="";
 std::string pathS="";
+std::string pathT="";
 
 vcg::Trackball track;//the active manipulator
 
@@ -102,6 +107,7 @@ AutoRemesher<FieldTriMesh>::Params RemPar;
 bool do_batch=false;
 bool has_features=false;
 bool has_features_fl=false;
+bool has_texture=false;
 //size_t ErodeDilateSteps=4;
 
 bool do_remesh=true;
@@ -628,6 +634,18 @@ GLWidget::GLWidget(QWidget *parent)
     glWrap.m=&tri_mesh;
 
     tri_mesh.UpdateDataStructures();
+
+    if (has_texture)
+    {
+        cv::Mat img, imgrgb;
+        cv::flip(cv::imread(pathT, cv::ImreadModes::IMREAD_COLOR), img, 0);
+        cv::cvtColor(img, imgrgb, cv::COLOR_BGR2RGB);
+        // FieldTriMesh::ScalarType thereshold;
+        // TextureProcess::SetUpAvgColor(tri_mesh, imgrgb, thereshold);
+        // TextureProcess::ExtractTexFeature(tri_mesh, imgrgb);
+        TextureProcess::SegmentTexture(tri_mesh, imgrgb, 350, true);
+        std::cout << "Color setup finished.\n";
+    }
 
     tri_mesh.LimitConcave=0;
     //MP.LimitConcave=0;
