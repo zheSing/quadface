@@ -44,6 +44,17 @@
 
 # IDE
 .vscode*
+
+# obj file
+*.obj
+*.sharp
+*.rosy
+*.patch
+*.corners
+*.c_feature
+*.feature
+
+# others
 components/field_computation/field_computation
 components/field_computation/moc_glwidget.cpp
 components/field_computation/moc_predefs.h
