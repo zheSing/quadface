@@ -23,8 +23,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+/* LZ change
+- remove header QDesktopWidget
+*/ 
+
 #include <QApplication>
-#include <QDesktopWidget>
+// #include <QDesktopWidget>
 #include <wrap/qt/anttweakbarMapper.h>
 #include "glwidget.h"
 #include <QWindow>

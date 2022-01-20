@@ -23,11 +23,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+/* LZ change
+- header QGLWidget -> QOpenGLWidget
+- class QGLWidget -> QOpenGLWidget
+*/ 
+
 #ifndef GLWIDGET_H
 #define GLWIDGET_H
 
 #include <GL/glew.h>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QKeyEvent>
 
 /// vcg imports
@@ -40,7 +45,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 void ProcessAllBatch();
 
-class GLWidget : public QGLWidget
+class GLWidget : public QOpenGLWidget
 {
     Q_OBJECT
 

@@ -23,6 +23,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ****************************************************************************/
 
+/* LZ change
+- class QGLWidget -> QOpenGLWidget
+- function updateGL() -> update()
+- function delta() -> -angleDelta().y()
+- OpenGL draw mode to DMFlat
+*/ 
+
 #include "glwidget.h"
 #include <wrap/qt/trackball.h>
 #include <wrap/gl/picking.h>
@@ -1021,7 +1028,7 @@ void InitBar(QWidget *w)
 
 
 GLWidget::GLWidget(QWidget *parent)
-    : QGLWidget(QGLFormat(QGL::SampleBuffers), parent)
+    : QOpenGLWidget(parent)
 {
     filename=0;
     //hasToPick=false;
@@ -1176,7 +1183,7 @@ void GLWidget::keyReleaseEvent (QKeyEvent * e)
     if (e->key () == Qt::Key_Control)  track.ButtonUp (QT2VCG (Qt::NoButton, Qt::ControlModifier));
     if (e->key () == Qt::Key_Shift)  track.ButtonUp (QT2VCG (Qt::NoButton, Qt::ShiftModifier));
     if (e->key () == Qt::Key_Alt) track.ButtonUp (QT2VCG (Qt::NoButton, Qt::AltModifier));
-    updateGL ();
+    update ();
 }
 
 
@@ -1188,7 +1195,7 @@ void GLWidget::keyPressEvent (QKeyEvent * e)
     if (e->key () == Qt::Key_Alt)  track.ButtonDown (QT2VCG (Qt::NoButton, Qt::AltModifier));
 
     TwKeyPressQt(e);
-    updateGL ();
+    update ();
 }
 
 void GLWidget::mousePressEvent (QMouseEvent * e)
@@ -1199,14 +1206,14 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
         setFocus ();
         track.MouseDown(QT2VCG_X(this, e), QT2VCG_Y(this, e), QT2VCG (e->button (), e->modifiers ()));
     }
-    updateGL ();
+    update ();
 }
 
 void GLWidget::mouseMoveEvent (QMouseEvent * e)
 {
     if (e->buttons ()) {
         track.MouseMove(QT2VCG_X(this, e), QT2VCG_Y(this, e));
-        updateGL ();
+        update ();
     }
     TwMouseMotion(QTLogicalToDevice(this, e->x()), QTLogicalToDevice(this, e->y()));
 }
@@ -1214,7 +1221,7 @@ void GLWidget::mouseMoveEvent (QMouseEvent * e)
 void GLWidget::mouseDoubleClickEvent (QMouseEvent * e)
 {
     (void)e;
-    updateGL();
+    update();
 }
 
 
@@ -1222,12 +1229,12 @@ void GLWidget::mouseReleaseEvent (QMouseEvent * e)
 {
     track.MouseUp(QT2VCG_X(this, e), QT2VCG_Y(this, e), QT2VCG(e->button (), e->modifiers ()));
     TwMouseReleaseQt(this,e);
-    updateGL ();
+    update ();
 }
 
 void GLWidget::wheelEvent (QWheelEvent * e)
 {
     const int WHEEL_STEP = 120;
-    track.MouseWheel (e->delta () / float (WHEEL_STEP), QTWheel2VCG (e->modifiers ()));
-    updateGL ();
+    track.MouseWheel (-e->angleDelta ().y() / float (WHEEL_STEP), QTWheel2VCG (e->modifiers ()));
+    update ();
 }
