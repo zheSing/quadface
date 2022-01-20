@@ -15,10 +15,10 @@ GMM_PATH            = $$PWD/CoMISo/gmm/
 EIGEN_PATH          = $$PWD/eigen/
 
 #GUI external libraries (needed only for field_computation and field_tracing projects)
-ANTTWEAKBAR_PATH    = /opt/AntTweakBar/
+ANTTWEAKBAR_PATH    = ~/AntTweakBar/
 
 #External libraries
 BOOST_PATH          = /usr/include/boost/
-GUROBI_PATH         = /opt/gurobi950/linux64/
+GUROBI_PATH         = ~/gurobi950/linux64/
 GUROBI_COMPILER     = gurobi_g++5.2
 GUROBI_LIB          = gurobi95
