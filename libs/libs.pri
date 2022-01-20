@@ -22,3 +22,4 @@ BOOST_PATH          = /usr/include/boost/
 GUROBI_PATH         = ~/gurobi950/linux64/
 GUROBI_COMPILER     = gurobi_g++5.2
 GUROBI_LIB          = gurobi95
+OPENCV_PATH         = /usr/local/include/opencv4

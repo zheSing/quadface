@@ -32,7 +32,7 @@ CONFIG += qt
 CONFIG += c++11
 CONFIG -= app_bundle
 
-QT += core gui opengl xml widgets
+QT += core gui openglwidgets xml widgets
 
 #Debug/release optimization flags
 CONFIG(debug, debug|release){
@@ -83,6 +83,10 @@ LIBS += -L$$ANTTWEAKBAR_PATH/lib -lAntTweakBar
 win32{ # Awful problem with windows..
     DEFINES += NOMINMAX
 }
+
+#opencv
+INCLUDEPATH += $$OPENCV_PATH \
+		$$OPENCV_PATH/opencv2
 
 #glew
 unix:!mac{

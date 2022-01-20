@@ -29,7 +29,7 @@ CONFIG += qt
 CONFIG += c++11
 CONFIG -= app_bundle
 
-QT += core gui opengl xml widgets
+QT += core gui openglwidgets xml widgets
 
 #Debug/release optimization flags
 CONFIG(debug, debug|release){
