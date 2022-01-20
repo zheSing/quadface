@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 - class QGLWidget -> QOpenGLWidget
 - function updateGL() -> update()
 - function delta() -> -angleDelta().y()
+- OpenGL draw mode to DMFlat
 */ 
 
 #include <GL/glew.h>
@@ -735,7 +736,7 @@ void GLWidget::paintGL ()
         //tri_mesh.GLDrawSharpEdges();
         GLDrawSharpEdges(tri_mesh);
         //MP.GLDrawSharpEdges();
-        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
+        glWrap.Draw(vcg::GLW::DMFlat,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
     }
 

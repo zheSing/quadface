@@ -43,7 +43,7 @@ TraceMesh mesh,problematic_mesh;     /// the active mesh instance
 vcg::GlTrimesh<TraceMesh> glWrap;    /// the active mesh opengl wrapper
 vcg::GlTrimesh<TraceMesh> glWrapProblem;
 vcg::Trackball track;     /// the active manipulator
-GLW::DrawMode drawmode=GLW::DMFlatWire;     /// the current drawmode
+GLW::DrawMode drawmode=GLW::DMFlat;     /// the current drawmode
 
 std::string pathM,pathF,pathS,pathOF,pathProject;
 
