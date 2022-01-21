@@ -486,7 +486,7 @@ public:
         }
         if (position1!=-1)
         {
-            int mask=0;
+            int mask=vcg::tri::io::Mask::IOM_WEDGTEXCOORD;
             int err=vcg::tri::io::ExporterOBJ<FieldTriMesh>::Save(*this,filename.c_str(),mask);
             if ((err!=0)&&(err!=5))return false;
             return true;

@@ -371,7 +371,7 @@ public:
         para.splitFlag    = true;
         para.swapFlag     = true;
         para.collapseFlag = true;
-        para.smoothFlag   = true;
+        para.smoothFlag   = false;
         para.projectFlag  = true;
         para.selectedOnly = false;
         para.adapt=false;
@@ -408,7 +408,7 @@ public:
         UpdateCoherentSharp(m,par);
 
         para.adapt = true;
-        para.smoothFlag   = true;
+        para.smoothFlag   = false;
         para.maxSurfDist = m.bbox.Diag() / 2500.;
 
         vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para);

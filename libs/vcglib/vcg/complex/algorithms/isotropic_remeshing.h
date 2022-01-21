@@ -918,6 +918,11 @@ private:
 
     static bool testCollapse1(const PosType &p, VertexPair & pair, Point3<ScalarType> &mp, ScalarType minQ, ScalarType maxQ, Params &params, bool relaxed = false)
     {
+        /* LZ Change
+        - do not collapse feature edge
+        */
+        if (p.IsEdgeS()) return false;
+        
         const ScalarType quality = params.adapt ? ((p.V()->Q()+ p.VFlip()->Q())/(ScalarType)2.0) : 0;
 
         const ScalarType mult = computeLengthThrMult(params, quality);

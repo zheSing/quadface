@@ -231,6 +231,28 @@ public:
       std::vector<VertexPointer> v2s; v2s.reserve(2);
       std::map <VertexPointer, bool> toSel;
 
+      /* LZ  Change
+      - find wedgetexcoord 
+      */
+      bool updateWedgeTex = false;
+      vcg::Point2<ScalarType> mt;
+
+      if (tri::HasPerWedgeTexCoord(m))
+      {
+        auto i = es.AV01().begin();
+        FaceType &f = *(i->f);
+        int id0 = i->z, id1;
+        assert(f.V(id0) == c.V(0));
+        updateWedgeTex = true;
+
+        if (f.V((id0+1)%3) == c.V(1)) id1 = (id0+1)%3;
+        else if (f.V((id0+2)%3) == c.V(1)) id1 = (id0+2)%3;
+        else updateWedgeTex = false;
+
+        if(updateWedgeTex)
+          mt = (f.WT(id0).P()+f.WT(id1).P())/2.;
+      }
+
 
       for(auto i=es.AV01().begin();i!=es.AV01().end();++i)
       {
@@ -296,6 +318,11 @@ public:
           (*i).f->VFi((*i).z) = c.V(1)->VFi();
           c.V(1)->VFp() = (*i).f;
           c.V(1)->VFi() = (*i).z;
+          /* LZ Change
+          - also update texture coordinates
+          */
+          if (updateWedgeTex)
+            (*i).f->WT((*i).z).P() = mt; 
       }
 
       if (preserveFaceEdgeS)
@@ -319,6 +346,15 @@ public:
           }
       }
 
+      /* LZ Change
+      - also update face that originally has v1's texcoord
+      */
+     for (VFIterator x = VFIterator(c.V(1)); !x.End(); ++x)
+     {
+       if (!x.f->IsD())
+        x.f->WT(x.z).P() = mt;
+     }
+      
       Allocator<TriMeshType>::DeleteVertex(m,*(c.V(0)));
       c.V(1)->P()=p;
       return n_face_del;

@@ -730,6 +730,15 @@ void FlipEdge(FaceType &f, const int z)
     f.V1(z) = g->V2(w);
     g->V1(w) = f.V2(z);
 
+    /* LZ Change
+    swap texture coordinates
+    */
+    if (f.HasWedgeTexCoord() && g->HasWedgeTexCoord())
+    {
+      f.WT((z+1)%3) = g->WT((w+2)%3);
+      g->WT((w+1)%3) = f.WT((z+2)%3);
+    }
+
 	//topology update
 
 
@@ -821,6 +830,15 @@ void FlipEdgeNotManifold(FaceType &f, const int z)
 
 	f.V1(z) = g->V2(w);
 	g->V1(w) = f.V2(z);
+
+  /* LZ Change
+  swap texture coordinates
+  */
+  if (f.HasWedgeTexCoord() && g->HasWedgeTexCoord())
+  {
+    f.WT((z+1)%3) = g->WT((w+2)%3);
+    g->WT((w+1)%3) = f.WT((z+2)%3);
+  }
 
 	//topology update
 	FaceType* ftmp = &f;
