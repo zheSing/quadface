@@ -2531,9 +2531,9 @@ private:
             bool UseInternalCuts=(AllowDarts||AllowSelfGluedPatch);
             GetPatchMesh(Index,m,UseInternalCuts);
 
-            PFunct.ContinuousCheckSelfInt()=ContinuosCheckUVInt;
+            // PFunct.ContinuousCheckSelfInt()=ContinuosCheckUVInt;
             PatchInfos[Index].QualityFunctorValue=PFunct(m);
-            PFunct.ContinuousCheckSelfInt()=true;
+            // PFunct.ContinuousCheckSelfInt()=true;
             if (PatchInfos[Index].QualityFunctorValue>0)
             {
                 PartitionType[Index]=NoQualityMatch;
@@ -4862,7 +4862,7 @@ public:
 
                 //then apply the parametrizator
                 PatchQualityFunctor PFunct;
-                PFunct.ContinuousCheckSelfInt()=false;
+                // PFunct.ContinuousCheckSelfInt()=false;
                 //vcg::tri::io::ExporterPLY<MeshType>::Save(SubMesh,"testSubM.ply");
                 ScalarType ValQ=PFunct(SubMesh);
 

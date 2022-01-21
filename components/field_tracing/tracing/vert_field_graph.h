@@ -99,39 +99,39 @@ public:
     {
 
         //set default WEdgeCoords
-        for (size_t i=0;i<mesh.face.size();i++)
-            for (size_t j=0;j<3;j++)
-                mesh.face[i].WT(j).P()=vcg::Point2<ScalarType>(0,0);
+        // for (size_t i=0;i<mesh.face.size();i++)
+        //     for (size_t j=0;j<3;j++)
+        //         mesh.face[i].WT(j).P()=vcg::Point2<ScalarType>(0,0);
 
-        //then set discontinuities along features
-        vcg::tri::UpdateFlags<MeshType>::VertexClearV(mesh);
-        for (size_t i=0;i<mesh.face.size();i++)
-        {
-            FaceType *f=&mesh.face[i];
-            for (size_t j=0;j<3;j++)
-            {
-                if (f->IsB(j))continue;
-                if (!f->IsFaceEdgeS(j))continue;
-                vcg::face::Pos<FaceType> CurrPos(f,j);
-                vcg::face::Pos<FaceType> StartPos=CurrPos;
-                vcg::Point2<ScalarType> CurrUV(0,0);
-                if (!CurrPos.V()->IsV())
-                {
-                    CurrPos.V()->SetV();
-                    do
-                    {
-                        size_t VIndex=WhichIndex(*CurrPos.F(),CurrPos.V());
-                        CurrPos.F()->WT(VIndex).P()=CurrUV;
-                        CurrPos.FlipE();
-                        CurrPos.FlipF();
-                        f=CurrPos.F();
-                        size_t curr_e=CurrPos.E();
-                        if (f->IsFaceEdgeS(curr_e))
-                            CurrUV+=vcg::Point2<ScalarType>(1,1);
-                    }while (CurrPos!=StartPos);
-                }
-            }
-        }
+        // //then set discontinuities along features
+        // vcg::tri::UpdateFlags<MeshType>::VertexClearV(mesh);
+        // for (size_t i=0;i<mesh.face.size();i++)
+        // {
+        //     FaceType *f=&mesh.face[i];
+        //     for (size_t j=0;j<3;j++)
+        //     {
+        //         if (f->IsB(j))continue;
+        //         if (!f->IsFaceEdgeS(j))continue;
+        //         vcg::face::Pos<FaceType> CurrPos(f,j);
+        //         vcg::face::Pos<FaceType> StartPos=CurrPos;
+        //         vcg::Point2<ScalarType> CurrUV(0,0);
+        //         if (!CurrPos.V()->IsV())
+        //         {
+        //             CurrPos.V()->SetV();
+        //             do
+        //             {
+        //                 size_t VIndex=WhichIndex(*CurrPos.F(),CurrPos.V());
+        //                 CurrPos.F()->WT(VIndex).P()=CurrUV;
+        //                 CurrPos.FlipE();
+        //                 CurrPos.FlipF();
+        //                 f=CurrPos.F();
+        //                 size_t curr_e=CurrPos.E();
+        //                 if (f->IsFaceEdgeS(curr_e))
+        //                     CurrUV+=vcg::Point2<ScalarType>(1,1);
+        //             }while (CurrPos!=StartPos);
+        //         }
+        //     }
+        // }
         vcg::tri::AttributeSeam::SplitVertex(mesh, ExtractVertex, CompareVertex);
     }
 };

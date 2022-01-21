@@ -1320,7 +1320,10 @@ void SaveAllData(PatchTracer<MeshType> &PTr,
             SaveM.SharpCorners.push_back(i);
 
     //save the mesh
-    int Mask=0;
+    /* LZ Change
+    - export uv
+    */
+    int Mask=vcg::tri::io::Mask::IOM_WEDGTEXCOORD;
     std::string pathMeshFinal=pathProject;
     pathMeshFinal=pathMeshFinal+"_p"+std::to_string(CurrNum)+".obj";
     vcg::tri::io::ExporterOBJ<MeshType>::Save(SaveM,pathMeshFinal.c_str(),Mask);
