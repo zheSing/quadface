@@ -48,7 +48,11 @@ class PolyVertex : public vcg::Vertex<MyPolyTypes,
         vcg::vertex::Qualityf,
         vcg::vertex::BitFlags,
         vcg::vertex::VFAdj,
-        vcg::vertex::CurvatureDirf>{};
+        vcg::vertex::CurvatureDirf,
+        /* LZ Change
+        - add per vertex texture coordinate
+        */
+       vcg::vertex::TexCoord2f>{};
 
 class PolyFace : public vcg::Face<
         MyPolyTypes,
@@ -62,7 +66,11 @@ class PolyFace : public vcg::Face<
         vcg::face::PFFAdj,
         vcg::face::PVFAdj,
         vcg::face::CurvatureDirf,
-        vcg::face::Mark> {};
+        vcg::face::Mark,
+        /* LZ Change
+        - add per wedge texture coordinate
+        */
+        vcg::face::WedgeTexCoord2f> {};
 
 class PolyEdge : public vcg::Edge<
         MyPolyTypes,
