@@ -56,6 +56,7 @@ bool findParametricValueInSegment(
 void computeQuadrangulation(
         const Eigen::MatrixXd& chartV,
         const Eigen::MatrixXi& chartF,
+        // const std::vector<Eigen::Matrix<double, 3, 2>>& chartUV,
         const Eigen::MatrixXd& patchV,
         const Eigen::MatrixXi& patchF,
         const std::vector<std::vector<std::vector<size_t>>>& chartSideVertices,
@@ -167,6 +168,7 @@ void computeQuadrangulation(
     tree.init(uvMapV, uvMapF);
 
     quadrangulationV.resize(patchV.rows(), 3);
+    // quadrangulationUV.resize(patchF.rows(), 2);
     for (int i = 0; i < patchV.rows(); i++) {
         const Eigen::VectorXd& Q = patchV.row(i);
 
@@ -216,7 +218,16 @@ void computeQuadrangulation(
                     chartV.row(tri(2)),
                     baryc);
 
+        // Eigen::MatrixXd tmpUV = chartUV[triIndex];
+
+        // Eigen::VectorXd mappedUV = barycentricToPoint(
+        //             tmpUV.row(0),
+        //             tmpUV.row(1),
+        //             tmpUV.row(2),
+        //             baryc);
+
         quadrangulationV.row(i) = mappedPoint;
+        // quadrangulationUV.row(i) = mappedUV;
     }
 
     quadrangulationF = patchF;

@@ -622,6 +622,17 @@ public:
         std::reverse(faceVert.begin(),faceVert.end());
         for (int i=0;i<f0.VN();i++)
             f0.V(i)=faceVert[i];
+        
+        // if (f0.HasWedgeTexCoord())
+        // {
+        //     typedef typename FaceType::TexCoordType::PointType PointType;
+        //     std::vector<PointType> uvPoint;
+        //     for (int i=0;i<f0.VN();i++)
+        //         uvPoint.push_back(f0.WT(i).P());
+        //     std::reverse(uvPoint.begin(),uvPoint.end());
+        //     for (int i=0;i<f0.VN();i++)
+        //         f0.WT(i).P()=uvPoint[i];
+        // }
     }
 
 private:

@@ -86,6 +86,29 @@ void VCGToEigen(
 }
 
 template<class PolyMeshType>
+void VCGToEigenUV(
+        PolyMeshType& vcgMesh,
+        Eigen::MatrixXd& V,
+        Eigen::MatrixXi& F,
+        std::vector<Eigen::Matrix<double, 3, 2>>& UV,
+        bool selectedOnly)
+{
+    assert (vcg::tri::HasPerWedgeTexCoord(vcgMesh));
+    UV.resize(F.rows());
+    int fId = 0;
+    for (size_t i = 0; i < vcgMesh.face.size(); i++){
+        if ((!selectedOnly || vcgMesh.face[i].IsS()) && !vcgMesh.face[i].IsD()) {
+            for (int j = 0; j < vcgMesh.face[i].VN(); j++) {
+                for (int k = 0; k < 2; k++) {
+                    UV[fId](j, k) = vcgMesh.face[i].WT(j).P()[k];
+                }
+            }
+            fId++;
+        }
+    }
+}
+
+template<class PolyMeshType>
 void eigenToVCG(
         const Eigen::MatrixXd& V,
         const Eigen::MatrixXi& F,
@@ -109,6 +132,26 @@ void eigenToVCG(
         vcgMesh.face[static_cast<size_t>(i)].Alloc(numVertices);
         for (int j = 0; j < numVertices; j++) {
             vcgMesh.face[static_cast<size_t>(i)].V(j) = &(vcgMesh.vert[static_cast<size_t>(F(i,j))]);
+        }
+    }
+}
+
+template<class PolyMeshType>
+void eigenUVToVCG(
+        const Eigen::MatrixXd& V,
+        const Eigen::MatrixXi& F,
+        const Eigen::MatrixXd& UV,
+        PolyMeshType& vcgMesh,
+        int numVertices)
+{
+    assert (vcg::tri::HasPerWedgeTexCoord(vcgMesh));
+    for (int i = 0; i < F.rows(); i++) {
+        for (int j = 0; j < numVertices; j++) {
+            size_t vidx = static_cast<size_t>(F(i,j));
+            printf("DEBUG: 10\n");
+            typename PolyMeshType::FaceType::TexCoordType::PointType tex(UV(vidx, 0), UV(vidx, 1));
+            printf("DEBUG: 11\n");
+            vcgMesh.face[static_cast<size_t>(i)].WT(j).P() = tex;
         }
     }
 }

@@ -643,7 +643,7 @@ GLWidget::GLWidget(QWidget *parent)
         // FieldTriMesh::ScalarType thereshold;
         // TextureProcess::SetUpAvgColor(tri_mesh, imgrgb, thereshold);
         // TextureProcess::ExtractTexFeature(tri_mesh, imgrgb);
-        TextureProcess::SegmentTexture(tri_mesh, imgrgb, 350, true);
+        TextureProcess::SegmentTexture(tri_mesh, imgrgb, 250, true);
         std::cout << "Color setup finished.\n";
     }
 
