@@ -58,5 +58,3 @@
 components/field_computation/field_computation
 components/field_computation/moc_glwidget.cpp
 components/field_computation/moc_predefs.h
-quadwild/quadwild_test.cpp
-quadwild/quadwild_test.pro
