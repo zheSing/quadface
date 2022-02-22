@@ -835,7 +835,6 @@ void quadrangulate(
         }
     }
 
-    printf("DEBUG: 1\n");
 
     //For each chart
     for (size_t cId = 0; cId < chartData.charts.size(); cId++) {
@@ -864,7 +863,7 @@ void quadrangulate(
         //Input mesh
         Eigen::MatrixXd chartV;
         Eigen::MatrixXi chartF;
-        // std::vector<Eigen::Matrix<double, 3, 2>> chartUV;
+        std::vector<std::vector<double>> chartUV;
         vcg::tri::UpdateFlags<TriangleMeshType>::FaceClearS(newSurface);
         vcg::tri::UpdateFlags<TriangleMeshType>::VertexClearS(newSurface);
         for (const size_t& fId : chart.faces) {
@@ -875,9 +874,9 @@ void quadrangulate(
         }
         std::vector<int> vMap, fMap;
         QuadRetopology::internal::VCGToEigen(newSurface, chartV, chartF, vMap, fMap, true, 3);
-        // QuadRetopology::internal::VCGToEigenUV(newSurface, chartV, chartF, chartUV, true);
+        QuadRetopology::internal::VCGToEigenUV(newSurface, chartV, chartF, chartUV, true);
         
-        printf("DEBUG: 2\n");
+        // printf("DEBUG: 2\n");
 
         //Input subdivisions
         Eigen::VectorXi l(chartSides.size());
@@ -924,7 +923,7 @@ void quadrangulate(
             l(static_cast<int>(i)) = targetSideSubdivision;
         }
         
-        printf("DEBUG: 3\n");
+        // printf("DEBUG: 3\n");
 
         //Pattern quadrangulation
         Eigen::MatrixXd patchV;
@@ -935,7 +934,7 @@ void quadrangulate(
         std::vector<std::vector<size_t>> patchSides;
         QuadRetopology::internal::computePattern(l, patchV, patchF, patchMesh, patchBorders, patchCorners, patchSides);
 
-        printf("DEBUG: 4\n");
+        // printf("DEBUG: 4\n");
 
 #ifdef QUADRETOPOLOGY_DEBUG_SAVE_MESHES
         igl::writeOBJ(std::string("results/") + std::to_string(cId) + std::string("_patch.obj"), patchV, patchF);
@@ -953,9 +952,9 @@ void quadrangulate(
         Eigen::MatrixXi uvMapF;
         Eigen::MatrixXd quadrangulationV;
         Eigen::MatrixXi quadrangulationF;
-        // Eigen::MatrixXd quadrangulationUV;
-        QuadRetopology::internal::computeQuadrangulation(chartV, chartF, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF);
-        // QuadRetopology::internal::computeQuadrangulation(chartV, chartF, chartUV, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF, quadrangulationUV);
+        Eigen::MatrixXd quadrangulationUV;
+        // QuadRetopology::internal::computeQuadrangulation(chartV, chartF, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF);
+        QuadRetopology::internal::computeQuadrangulation(chartV, chartF, chartUV, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF, quadrangulationUV);
 
         printf("DEBUG: 5\n");
 
@@ -975,9 +974,10 @@ void quadrangulate(
         //Get polymesh
         PolyMeshType quadrangulatedChartMesh;
         printf("DEBUG: 12\n");
-        QuadRetopology::internal::eigenToVCG(quadrangulationV, quadrangulationF, quadrangulatedChartMesh, 4);
+        // QuadRetopology::internal::eigenToVCG(quadrangulationV, quadrangulationF, quadrangulatedChartMesh, 4);
         printf("DEBUG: 13\n");
-        // QuadRetopology::internal::eigenUVToVCG(quadrangulationV, quadrangulationF, quadrangulationUV, quadrangulatedChartMesh, 4);
+        // std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
+        QuadRetopology::internal::eigenUVToVCG(quadrangulationV, quadrangulationF, quadrangulationUV, quadrangulatedChartMesh, 4);
 
         printf("DEBUG: 6\n");
 
@@ -987,14 +987,15 @@ void quadrangulate(
 
         //Smoothing
         // todo: not finish yet.
-        if (chartSmoothingIterations > 0) {
-            vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulatedChartMesh);
-            for (size_t vId : patchBorders) {
-                quadrangulatedChartMesh.vert[vId].ClearS();
-            }
-            vcg::PolygonalAlgorithm<PolyMeshType>::LaplacianReproject(quadrangulatedChartMesh, chartSmoothingIterations, 0.5, true);
-        }
+        // if (chartSmoothingIterations > 0) {
+        //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulatedChartMesh);
+        //     for (size_t vId : patchBorders) {
+        //         quadrangulatedChartMesh.vert[vId].ClearS();
+        //     }
+        //     vcg::PolygonalAlgorithm<PolyMeshType>::LaplacianReproject(quadrangulatedChartMesh, chartSmoothingIterations, 0.5, true);
+        // }
 
+        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
         std::vector<int> currentVertexMap(quadrangulatedChartMesh.vert.size(), -1);
 
         //Map subsides on the vertices of the current mesh (create if necessary)
@@ -1082,7 +1083,8 @@ void quadrangulate(
             assert(currentPatchSideVertex+1 == patchSide.size());
         }
 
-        std::cout << "DEBUG: 7\n";
+        printf("DEBUG: 7\n");
+        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
 
         //Internal vertices
         for (size_t i = 0; i < quadrangulatedChartMesh.vert.size(); i++) {
@@ -1096,17 +1098,27 @@ void quadrangulate(
             }
         }
 
-        std::cout << "DEBUG: 8\n";
+        printf("DEBUG: 8\n");
+        
+        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
 
         //Set faces
         for (size_t i = 0; i < quadrangulatedChartMesh.face.size(); i++) {
+            printf("size0: %d\n", quadrangulatedChartMesh.face[i].VN());
             assert(quadrangulatedChartMesh.face[i].VN() == 4);
 
             size_t newFaceId = quadrangulation.face.size();
 
+            printf("size: %d\n", quadrangulatedChartMesh.face[i].VN());
+
             vcg::tri::Allocator<PolyMeshType>::AddFaces(quadrangulation, 1);
 
+            printf("size1: %d\n", quadrangulatedChartMesh.face[i].VN());
+
             quadrangulation.face[newFaceId].Alloc(quadrangulatedChartMesh.face[i].VN());
+
+            printf("size2: %d\n", quadrangulatedChartMesh.face[i].VN());
+            
             for (int j = 0; j < quadrangulatedChartMesh.face[i].VN(); j++) {
                 int vId = currentVertexMap[vcg::tri::Index(quadrangulatedChartMesh, quadrangulatedChartMesh.face[i].V(j))];
                 assert(vId >= 0);
@@ -1114,14 +1126,19 @@ void quadrangulate(
                 quadrangulation.face[newFaceId].V(j) = &quadrangulation.vert[vId];
 
                 // for uv 
-                // quadrangulation.face[newFaceId].WT(j).P() = quadrangulatedChartMesh.face[i].WT(j).P();
+                quadrangulation.face[newFaceId].WT(j).P() = quadrangulatedChartMesh.face[i].WT(j).P();
+
+                std::cout << quadrangulatedChartMesh.face[i].WT(j).P()[0] << ", " << quadrangulatedChartMesh.face[i].WT(j).P()[1] << std::endl;
             }
 
             quadrangulationFaceLabel.push_back(chart.label);
             quadrangulationPartitions[chart.label].push_back(newFaceId);
-        }
 
-        std::cout << "DEBUG: 9\n";
+            printf("DEBUG: 9\n");
+            
+        }
+        
+
 
         //Fill corners vertices
         for (size_t i = 0; i < chartSides.size(); i++) {
@@ -1314,35 +1331,35 @@ void quadrangulate(
 #endif
 
     // todo: not finished yet.
-    if (quadrangulationFixedSmoothingIterations > 0) {
-        vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
-        for (const size_t& fixedVertexId : quadrangulationVerticesBetweenPatch) {
-            if (quadrangulation.vert[fixedVertexId].IsD())
-                continue;
+    // if (quadrangulationFixedSmoothingIterations > 0) {
+    //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
+    //     for (const size_t& fixedVertexId : quadrangulationVerticesBetweenPatch) {
+    //         if (quadrangulation.vert[fixedVertexId].IsD())
+    //             continue;
 
-            quadrangulation.vert[fixedVertexId].ClearS();
-        }
+    //         quadrangulation.vert[fixedVertexId].ClearS();
+    //     }
 
-        vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationFixedSmoothingIterations, 0.7, 0.7, true);
-    }
+    //     vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationFixedSmoothingIterations, 0.7, 0.7, true);
+    // }
 
 #ifdef QUADRETOPOLOGY_DEBUG_SAVE_MESHES
     vcg::tri::io::ExporterOBJ<PolyMeshType>::Save(quadrangulation, "results/quadrangulation_5_smoothed_fixed.obj", vcg::tri::io::Mask::IOM_NONE);
 #endif
 
     // todo: not finished yet.
-    if (quadrangulationNonFixedSmoothingIterations > 0) {
-        vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
-        for (size_t i=0;i<quadrangulation.vert.size();i++) {
-            if (quadrangulation.vert[i].IsD())
-                continue;
-            if (quadrangulation.vert[i].IsB()) {
-                quadrangulation.vert[i].ClearS();
-            }
-        }
+    // if (quadrangulationNonFixedSmoothingIterations > 0) {
+    //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
+    //     for (size_t i=0;i<quadrangulation.vert.size();i++) {
+    //         if (quadrangulation.vert[i].IsD())
+    //             continue;
+    //         if (quadrangulation.vert[i].IsB()) {
+    //             quadrangulation.vert[i].ClearS();
+    //         }
+    //     }
 
-        vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationNonFixedSmoothingIterations, 0.7, 0.7, true);
-    }
+    //     vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationNonFixedSmoothingIterations, 0.7, 0.7, true);
+    // }
 
     vcg::PolygonalAlgorithm<PolyMeshType>::UpdateFaceNormalByFitting(quadrangulation);
     vcg::tri::UpdateNormal<PolyMeshType>::PerVertexNormalized(quadrangulation);

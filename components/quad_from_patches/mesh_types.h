@@ -65,12 +65,13 @@ class PolyFace : public vcg::Face<
         vcg::face::PFVAdj,
         vcg::face::PFFAdj,
         vcg::face::PVFAdj,
-        vcg::face::CurvatureDirf,
+        // vcg::face::CurvatureDirf,
         vcg::face::Mark,
         /* LZ Change
         - add per wedge texture coordinate
         */
-        vcg::face::WedgeTexCoord2f> {};
+        vcg::face::WedgeTexCoord2f,
+        vcg::face::PWedgeTexCoord> {};
 
 class PolyEdge : public vcg::Edge<
         MyPolyTypes,
@@ -99,7 +100,11 @@ class TriangleVertex : public vcg::Vertex<
         vcg::vertex::Color4b,
         vcg::vertex::Qualityf,
         vcg::vertex::BitFlags,
-        vcg::vertex::CurvatureDirf>{};
+        vcg::vertex::CurvatureDirf,
+        /* LZ Change
+        - add per vertex texture coordinate
+        */
+       vcg::vertex::TexCoord2f>{};
 
 class TriangleFace : public vcg::Face<
         MyTriangleTypes,
@@ -111,7 +116,11 @@ class TriangleFace : public vcg::Face<
         vcg::face::FFAdj,
         vcg::face::VFAdj,
         vcg::face::CurvatureDirf,
-        vcg::face::Mark> {};
+        vcg::face::Mark,
+        /* LZ Change
+        - add per wedge texture coordinate
+        */
+        vcg::face::WedgeTexCoord2f> {};
 
 class TriangleMesh : public vcg::tri::TriMesh<
         std::vector<TriangleVertex>,

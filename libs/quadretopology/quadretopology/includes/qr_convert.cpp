@@ -90,9 +90,10 @@ void VCGToEigenUV(
         PolyMeshType& vcgMesh,
         Eigen::MatrixXd& V,
         Eigen::MatrixXi& F,
-        std::vector<Eigen::Matrix<double, 3, 2>>& UV,
+        std::vector<std::vector<double>>& UV,
         bool selectedOnly)
 {
+    int dbg = 0;
     assert (vcg::tri::HasPerWedgeTexCoord(vcgMesh));
     UV.resize(F.rows());
     int fId = 0;
@@ -100,7 +101,7 @@ void VCGToEigenUV(
         if ((!selectedOnly || vcgMesh.face[i].IsS()) && !vcgMesh.face[i].IsD()) {
             for (int j = 0; j < vcgMesh.face[i].VN(); j++) {
                 for (int k = 0; k < 2; k++) {
-                    UV[fId](j, k) = vcgMesh.face[i].WT(j).P()[k];
+                    UV[fId].push_back(vcgMesh.face[i].WT(j).P()[k]);
                 }
             }
             fId++;
@@ -142,17 +143,37 @@ void eigenUVToVCG(
         const Eigen::MatrixXi& F,
         const Eigen::MatrixXd& UV,
         PolyMeshType& vcgMesh,
-        int numVertices)
+        int numVertices,
+        int dim)
 {
-    assert (vcg::tri::HasPerWedgeTexCoord(vcgMesh));
+    assert(dim >= 2);
+    assert(numVertices > 2);
+
+    std::cout << "dbg: 1\n";
+
+    vcgMesh.Clear();
+
+    std::cout << "dbg: 2\n";
+
+    vcg::tri::Allocator<PolyMeshType>::AddVertices(vcgMesh, V.rows());
+    for (int i = 0; i < V.rows(); i++) {
+        typename PolyMeshType::CoordType vv(V(i,0), V(i,1), V(i,2));
+        vcgMesh.vert[static_cast<size_t>(i)].P() = vv;
+    }
+
+
+    std::cout << "dbg: 3\n";
+
+    vcg::tri::Allocator<PolyMeshType>::AddFaces(vcgMesh, static_cast<size_t>(F.rows()));
     for (int i = 0; i < F.rows(); i++) {
+        vcgMesh.face[static_cast<size_t>(i)].Alloc(numVertices);
+        std::cout << "VN: " << vcgMesh.face[static_cast<size_t>(i)].VN() << std::endl;
         for (int j = 0; j < numVertices; j++) {
             size_t vidx = static_cast<size_t>(F(i,j));
-            printf("DEBUG: 10\n");
-            typename PolyMeshType::FaceType::TexCoordType::PointType tex(UV(vidx, 0), UV(vidx, 1));
-            printf("DEBUG: 11\n");
-            vcgMesh.face[static_cast<size_t>(i)].WT(j).P() = tex;
+            vcgMesh.face[static_cast<size_t>(i)].V(j) = &(vcgMesh.vert[vidx]);
+            vcgMesh.face[static_cast<size_t>(i)].WT(j).P() = vcg::Point2f((float)UV(vidx, 0), (float)UV(vidx, 1));
         }
+        std::cout << "VN: " << vcgMesh.face[static_cast<size_t>(i)].VN() << std::endl;
     }
 }
 

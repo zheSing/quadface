@@ -48,7 +48,7 @@ void VCGToEigenUV(
         PolyMeshType& vcgMesh,
         Eigen::MatrixXd& V,
         Eigen::MatrixXi& F,
-        std::vector<Eigen::Matrix<double, 3, 2>>& UV,
+        std::vector<std::vector<double>>& UV,
         bool selectedOnly = false);
 
 template<class PolyMeshType>
@@ -65,7 +65,8 @@ void eigenUVToVCG(
         const Eigen::MatrixXi& F,
         const Eigen::MatrixXd& UV,
         PolyMeshType& vcgMesh,
-        int numVertices = 3);
+        int numVertices = 3,
+        int dim = 3);
 
 }
 }

@@ -36,7 +36,7 @@ namespace internal {
 void computeQuadrangulation(
         const Eigen::MatrixXd& chartV,
         const Eigen::MatrixXi& chartF,
-        // const std::vector<Eigen::Matrix<double, 3, 2>>& chartUV,
+        const std::vector<std::vector<double>>& chartUV,
         const Eigen::MatrixXd& patchV,
         const Eigen::MatrixXi& patchF,
         const std::vector<std::vector<std::vector<size_t>>>& chartSideVertices,
@@ -46,7 +46,8 @@ void computeQuadrangulation(
         Eigen::MatrixXd& uvMapV,
         Eigen::MatrixXi& uvMapF,
         Eigen::MatrixXd& quadrangulationV,
-        Eigen::MatrixXi& quadrangulationF);
+        Eigen::MatrixXi& quadrangulationF,
+        Eigen::MatrixXd& quadrangulationUV);
 
 }
 

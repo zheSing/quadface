@@ -129,6 +129,46 @@ private:
   typename T::VertexPointer *_vpoly;
 };
 
+template <class T> class PWedgeTexCoord: public T {
+public:
+  typedef typename T::TexCoordType TexCoordType;
+  
+  PWedgeTexCoord(){ _wtpoly = nullptr; }
+
+  TexCoordType        &WT(const int i)       { assert(i>=0 && i<this->VN()); return _wtpoly[i]; }
+  const TexCoordType&  WT(const int i) const { assert(i>=0 && i<this->VN()); return _wtpoly[i]; }
+  const TexCoordType& cWT(const int i) const { assert(i>=0 && i<this->VN()); return _wtpoly[i]; }
+  
+  template <class RightValueType>
+  void ImportData(const RightValueType & rightF){
+    if(rightF.IsWedgeTexCoordEnabled())
+      for (int i=0; i<this->VN(); ++i) { WT(i) = rightF.cWT(i); }
+    T::ImportData(rightF);
+  }
+  
+  inline void Alloc(const int & ns) {
+    __Dealloc();
+    _wtpoly = new TexCoordType[ns];
+    for(int i = 0; i < ns; ++i) _wtpoly[i] = TexCoordType(0, 0);
+    T::Alloc(ns);
+  }
+  inline void Dealloc() {
+    __Dealloc();
+    T::Dealloc();
+  }
+
+  static bool HasWedgeTexCoord()   { return true; }
+  static void Name(std::vector<std::string> & name){name.push_back(std::string("PWedgeTexCoord"));T::Name(name);}
+
+private:
+  inline void __Dealloc(){
+    delete [] _wtpoly;
+    _wtpoly = nullptr;
+  }
+
+  TexCoordType* _wtpoly;
+};
+
 template <class T> class PVFAdj: public T {
 public:
 
