@@ -973,10 +973,7 @@ void quadrangulate(
 
         //Get polymesh
         PolyMeshType quadrangulatedChartMesh;
-        printf("DEBUG: 12\n");
-        // QuadRetopology::internal::eigenToVCG(quadrangulationV, quadrangulationF, quadrangulatedChartMesh, 4);
-        printf("DEBUG: 13\n");
-        // std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
+        QuadRetopology::internal::eigenToVCG(quadrangulationV, quadrangulationF, quadrangulatedChartMesh, 4);
         QuadRetopology::internal::eigenUVToVCG(quadrangulationV, quadrangulationF, quadrangulationUV, quadrangulatedChartMesh, 4);
 
         printf("DEBUG: 6\n");

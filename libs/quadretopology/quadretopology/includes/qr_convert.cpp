@@ -143,37 +143,15 @@ void eigenUVToVCG(
         const Eigen::MatrixXi& F,
         const Eigen::MatrixXd& UV,
         PolyMeshType& vcgMesh,
-        int numVertices,
-        int dim)
+        int numVertices)
 {
-    assert(dim >= 2);
-    assert(numVertices > 2);
+    assert(vcg::tri::HasPerWedgeTexCoord(vcgMesh));
 
-    std::cout << "dbg: 1\n";
-
-    vcgMesh.Clear();
-
-    std::cout << "dbg: 2\n";
-
-    vcg::tri::Allocator<PolyMeshType>::AddVertices(vcgMesh, V.rows());
-    for (int i = 0; i < V.rows(); i++) {
-        typename PolyMeshType::CoordType vv(V(i,0), V(i,1), V(i,2));
-        vcgMesh.vert[static_cast<size_t>(i)].P() = vv;
-    }
-
-
-    std::cout << "dbg: 3\n";
-
-    vcg::tri::Allocator<PolyMeshType>::AddFaces(vcgMesh, static_cast<size_t>(F.rows()));
     for (int i = 0; i < F.rows(); i++) {
-        vcgMesh.face[static_cast<size_t>(i)].Alloc(numVertices);
-        std::cout << "VN: " << vcgMesh.face[static_cast<size_t>(i)].VN() << std::endl;
         for (int j = 0; j < numVertices; j++) {
             size_t vidx = static_cast<size_t>(F(i,j));
-            vcgMesh.face[static_cast<size_t>(i)].V(j) = &(vcgMesh.vert[vidx]);
             vcgMesh.face[static_cast<size_t>(i)].WT(j).P() = vcg::Point2f((float)UV(vidx, 0), (float)UV(vidx, 1));
         }
-        std::cout << "VN: " << vcgMesh.face[static_cast<size_t>(i)].VN() << std::endl;
     }
 }
 

@@ -65,8 +65,7 @@ void eigenUVToVCG(
         const Eigen::MatrixXi& F,
         const Eigen::MatrixXd& UV,
         PolyMeshType& vcgMesh,
-        int numVertices = 3,
-        int dim = 3);
+        int numVertices = 3);
 
 }
 }
