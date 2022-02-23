@@ -266,9 +266,8 @@ int main(int argc, char *argv[])
     //TRACING
     PTr.InitTracer(Drift,false);
     RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,true,meta_mesh_collapse,force_split,true,false);
-    int mask=vcg::tri::io::Mask::IOM_WEDGTEXCOORD;
-    vcg::tri::io::ExporterOBJ<TraceMesh>::Save(PTr.Mesh(),(pathProject+"_org.obj").c_str(),mask);
-    PTr.SmoothPatches();
+    // todo: not finished yet.
+    // PTr.SmoothPatches();
     SaveAllData(PTr,pathProject,0,false,false);
 
 
@@ -286,7 +285,7 @@ int main(int argc, char *argv[])
 
     PathM=pathProject;
     PathM.append("_p0.obj");
-    mask=vcg::tri::io::Mask::IOM_WEDGTEXCOORD;
+    int mask=vcg::tri::io::Mask::IOM_WEDGTEXCOORD;
     vcg::tri::io::ImporterOBJ<TriangleMesh>::LoadMask(PathM.c_str(), mask);
     std::cout << "Mask: " << mask << std::endl;
     int err = vcg::tri::io::ImporterOBJ<TriangleMesh>::Open(to_quad_trimesh, PathM.c_str(), mask);
