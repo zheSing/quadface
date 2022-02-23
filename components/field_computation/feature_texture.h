@@ -1,3 +1,6 @@
+#ifndef FEATURE_TEXTURE
+#define FEATURE_TEXTURE
+
 #include "triangle_mesh_type.h"
 #include <opencv2/opencv.hpp>
 
@@ -15,6 +18,15 @@ class TextureProcess
     typedef typename MeshType::FacePointer FacePointer;
     typedef typename FaceType::TexCoordType TexCoordType;
     typedef typename FaceType::ColorType ColorType;
+
+    template <class FaceType>
+    static size_t WhichIndex(FaceType &f,typename FaceType::VertexType *v)
+    {
+        if (f.V(0)==v)return 0;
+        if (f.V(1)==v)return 1;
+        if (f.V(2)==v)return 2;
+        assert(0);
+    }
 
     static void BottomFlatTriangle(TexCoordType *t,
                                    vcg::Point3i &sum,
@@ -381,7 +393,7 @@ class TextureProcess
     }
 
 public:
-    static void SetUpAvgColor(MeshType &mesh, cv::Mat &img, ScalarType &thereshold)
+    static void SetUpAvgColor(MeshType &mesh, cv::Mat &img)
     {
         for (size_t i = 0; i < mesh.face.size(); i++)
         {
@@ -390,7 +402,53 @@ public:
             color = AverageFaceColor(&mesh.face[i], img);
             mesh.face[i].C() = color;
         }
-        thereshold = 10;
+    }
+
+    static void TexCoordFeature(MeshType &mesh)
+    {
+        vcg::tri::UpdateFlags<MeshType>::VertexClearS(mesh);
+        vcg::tri::UpdateFlags<MeshType>::VertexClearV(mesh);
+        
+        // mark vertices have different uv
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            FacePointer fp = &mesh.face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (!fp->V(j)->IsV())
+                {
+                    fp->V(j)->SetV();
+                    vcg::face::Pos<FaceType> pos(fp, j);
+                    vcg::face::Pos<FaceType> startPos = pos;
+                    TexCoordType::PointType vt = fp->WT(j).P();
+                    do
+                    {
+                        size_t vidx=WhichIndex(*pos.F(),pos.V());
+                        if (pos.F()->WT(vidx).P() != vt)
+                        {
+                            fp->V(j)->SetS();
+                            break;
+                        }
+                        pos.FlipE();
+                        pos.FlipF();
+                    } while (startPos!=pos);
+                }
+            }
+        }
+
+        // mark edges have different uv
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            FacePointer fp = &mesh.face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (fp->V(j)->IsS() && fp->V((j+1)%3)->IsS())
+                    fp->SetFaceEdgeS(j);
+            }
+        }
+        
+        vcg::tri::UpdateFlags<MeshType>::VertexClearS(mesh);
+        vcg::tri::UpdateFlags<MeshType>::VertexClearV(mesh);
     }
 
     static bool SegmentTexture(MeshType &mesh,
@@ -401,11 +459,11 @@ public:
         if (img.empty())
             return false;
 
-        ScalarType thereshold;
-        SetUpAvgColor(mesh, img, thereshold);
+        SetUpAvgColor(mesh, img);
 
         mesh.UpdateDataStructures();
-        vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
+
+        // mark 
 
         std::vector<WeightedEdge> edges;
         CreateGraph(mesh, edges);
@@ -414,7 +472,7 @@ public:
 
         FindSet forest(mesh.face.size());
         forest.Segment(edges, k);
-        while (forest.MergeSmallSet(edges, 20))
+        while (forest.MergeSmallSet(edges, 30))
         {
         };
 
@@ -443,8 +501,8 @@ public:
         if (img.empty())
             return false;
 
-        ScalarType thereshold;
-        SetUpAvgColor(mesh, img, thereshold);
+        ScalarType thereshold=10;
+        SetUpAvgColor(mesh, img);
 
         mesh.UpdateDataStructures();
         vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
@@ -486,3 +544,6 @@ public:
         return true;
     }
 };
+
+
+#endif
