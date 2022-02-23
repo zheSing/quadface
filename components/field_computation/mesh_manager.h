@@ -35,6 +35,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <wrap/io_trimesh/import.h>
 #include <wrap/io_trimesh/export.h>
 //#include <wrap/gl/trimesh.h>
+#include <opencv2/opencv.hpp>
 #include "AutoRemesher.h"
 #include <wrap/io_trimesh/export_field.h>
 #include <iostream>
@@ -45,6 +46,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vcg/complex/algorithms/polygonal_algorithms.h>
 
 #include "fields/field_smoother.h"
+
+#include "feature_texture.h"
 
 // Basic subdivision class
 template <class FaceType>
@@ -697,27 +700,45 @@ public:
         mesh.InitEdgeType();
     }
 
-    static void InitSharpFeatures(MeshType &mesh,
-                                  ScalarType sharp_feature_thr,
-                                  size_t feature_erode_dilate)
-    {
-        mesh.UpdateDataStructures();
-        mesh.InitSharpFeatures(sharp_feature_thr);
-        mesh.ErodeDilate(feature_erode_dilate);
-    }
-
     struct BatchParam
     {
         bool UpdateSharp=true;
         bool DoRemesh=true;
         bool surf_dist_check=true;
+        bool has_texture=false;
         ScalarType sharp_feature_thr=35;
         size_t feature_erode_dilate=4;
         ScalarType SharpFactor=6;
         size_t remesher_iterations=15;
         ScalarType remesher_aspect_ratio=0.3;
         ScalarType remesher_termination_delta = 10000;
+        ScalarType texture_diff=250;
+        cv::Mat tex_img;
     };
+
+
+    static void InitSharpFeatures(MeshType &mesh,
+                                  const BatchParam& BPar)
+    {
+        // clear sel
+        mesh.UpdateDataStructures();
+        vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
+
+        // mark vertices that have different uv
+        TextureProcess::TexCoordFeature(mesh);
+
+        // has tex or not 
+        if (!BPar.has_texture)
+        {
+            mesh.InitSharpFeatures(BPar.sharp_feature_thr);
+        }
+        else
+        {
+            assert(TextureProcess::SegmentTexture(mesh, BPar.tex_img, BPar.texture_diff));
+        }
+        mesh.ErodeDilate(BPar.feature_erode_dilate);
+    }
+
 
     static void BatchProcess(MeshType &mesh,BatchParam &BPar,
                              typename vcg::tri::FieldSmoother<MeshType>::SmoothParam &FieldParam)
@@ -726,7 +747,7 @@ public:
 
         // SELECT SHARP FEATURES
         if (BPar.UpdateSharp)
-            MeshPrepocess<MeshType>::InitSharpFeatures(mesh,BPar.sharp_feature_thr,BPar.feature_erode_dilate);
+            MeshPrepocess<MeshType>::InitSharpFeatures(mesh, BPar);
 
 //        MeshPrepocess<MeshType>::SolveGeometricArtifacts(mesh);
 

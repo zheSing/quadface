@@ -76,6 +76,11 @@ INCLUDEPATH += $$VCGLIB_PATH
 #eigen
 INCLUDEPATH += $$EIGEN_PATH
 
+#opencv
+INCLUDEPATH += $$OPENCV_PATH \
+		$$OPENCV_PATH/opencv2
+LIBS += /usr/local/lib/libopencv*
+
 #tracing
 INCLUDEPATH += $$MESHFIELD_PATH
 INCLUDEPATH += $$MESHTRACE_PATH

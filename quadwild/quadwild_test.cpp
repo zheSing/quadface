@@ -56,8 +56,8 @@ bool DoRemesh=true;
 float SharpAngle=35;
 float Alpha=0.02;
 float ScaleFact=1;
-bool HasFeature=false;
-std::string PathS;
+bool HasFeature=false, HasTexture=false;
+std::string PathS, PathT;
 bool HasField=false;
 std::string PathField;
 
@@ -136,6 +136,22 @@ int main(int argc, char *argv[])
            HasField=true;
            continue;
         }
+
+        position=pathTest.find(".png");
+        if(position!=-1)
+        {
+            PathT=pathTest;
+            HasTexture=true;
+            continue;
+        }
+
+        position=pathTest.find(".jpg");
+        if(position!=-1)
+        {
+            PathT=pathTest;
+            HasTexture=true;
+            continue;
+        }
     }
 
 
@@ -177,6 +193,13 @@ int main(int argc, char *argv[])
             exit(0);
         }
         std::cout<<"Sharp Feature Length:"<<tri_mesh.SharpLenght()<<std::endl;
+    }
+    else if (HasTexture)
+    {
+        std::cout<<"Loading texture "<<PathT<<std::endl;
+        BPar.has_texture=true;
+        cv::flip(cv::imread(PathT, cv::ImreadModes::IMREAD_COLOR), BPar.tex_img, 0);
+        std::cout<<"Texture loaded."<<std::endl;
     }
     if (!HasField)
     {

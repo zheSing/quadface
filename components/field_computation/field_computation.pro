@@ -32,6 +32,11 @@ CONFIG += qt
 CONFIG += c++11
 CONFIG -= app_bundle
 
+# ignore warning
+CONFIG += warn_off
+QMAKE_CXXFLAGS += -Wall
+QMAKE_CXXFLAGS += -Wno-comment
+
 QT += core gui openglwidgets xml widgets
 
 #Debug/release optimization flags
@@ -87,6 +92,7 @@ win32{ # Awful problem with windows..
 #opencv
 INCLUDEPATH += $$OPENCV_PATH \
 		$$OPENCV_PATH/opencv2
+LIBS += /usr/local/lib/libopencv*
 
 #glew
 unix:!mac{
