@@ -725,7 +725,7 @@ public:
         vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
 
         // mark vertices that have different uv
-        TextureProcess::TexCoordFeature(mesh);
+        // TextureProcess::TexCoordFeature(mesh);
 
         // has tex or not 
         if (!BPar.has_texture)
@@ -738,7 +738,21 @@ public:
         }
         mesh.ErodeDilate(BPar.feature_erode_dilate);
     }
-
+    
+    static void FaceEdgeSelInvert(MeshType &mesh)
+    {
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            FacePointer fp = &mesh.face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (fp->IsFaceEdgeS(j))
+                    fp->ClearFaceEdgeS(j);
+                else
+                    fp->SetFaceEdgeS(j);   
+            }
+        }
+    }
 
     static void BatchProcess(MeshType &mesh,BatchParam &BPar,
                              typename vcg::tri::FieldSmoother<MeshType>::SmoothParam &FieldParam)
@@ -764,8 +778,12 @@ public:
             RemPar.targetDeltaFN= BPar.remesher_termination_delta;
             RemPar.surfDistCheck = BPar.surf_dist_check;
 
+            // FaceEdgeSelInvert(mesh);
+
             //AutoRemesher<MeshType>::Remesh2(mesh,RemPar);
             AutoRemesher<MeshType>::RemeshAdapt(mesh,RemPar);
+
+            // FaceEdgeSelInvert(mesh);
 
         }
         mesh.InitFeatureCoordsTable();

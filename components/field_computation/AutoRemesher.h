@@ -371,7 +371,7 @@ public:
         para.splitFlag    = true;
         para.swapFlag     = true;
         para.collapseFlag = true;
-        para.smoothFlag   = false;
+        para.smoothFlag   = true;
         para.projectFlag  = true;
         para.selectedOnly = false;
         para.adapt=false;
@@ -384,7 +384,6 @@ public:
         para.maxSurfDist = m.bbox.Diag() / 2500.;
         para.surfDistCheck = m.FN() < 400000 ? par.surfDistCheck : false;
         para.userSelectedCreases = true;
-
 
 
         ScalarType edgeL = ExpectedEdgeL(m);//,par.initialApproximateFN);//std::sqrt(2.309 * vcg::tri::Stat<Mesh>::ComputeMeshArea(m) / par.initialApproximateFN);//m.bbox.Diag() * 0.025;//std::sqrt(vcg::tri::Stat<Mesh>::ComputeMeshArea(m) * 2 / par.initialApproximateFN);
@@ -405,10 +404,10 @@ public:
         //vcg::tri::UpdateSelection<Mesh>::VertexClear(m);
         collapseSurvivingMicroEdges(m,thr);
 
-        UpdateCoherentSharp(m,par);
+        // UpdateCoherentSharp(m,par);
 
         para.adapt = true;
-        para.smoothFlag   = false;
+        para.smoothFlag   = true;
         para.maxSurfDist = m.bbox.Diag() / 2500.;
 
         vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para);

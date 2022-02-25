@@ -211,9 +211,15 @@ public:
   // To do a collapse onto a vertex simply pass p as the position of the surviving vertex
   static int Do(TriMeshType &m, VertexPair & c, const Point3<ScalarType> &p, const bool preserveFaceEdgeS = false)
   {
+      // c: the vertex pair need to be collapse
+      // p: coordinate of the new vertex
+
+      // es.AV0: faces that only adj to v0
+      // es.AV01: faces adj to v0 and v1
       EdgeSet es, es1;
       FindSets(c,es);
 
+      // es1: inverse of es
       if (preserveFaceEdgeS)
       {
           VertexPair c1(c.V(1), c.V(0));
@@ -243,13 +249,13 @@ public:
         FaceType &f = *(i->f);
         int id0 = i->z, id1;
         assert(f.V(id0) == c.V(0));
-        updateWedgeTex = true;
 
+        updateWedgeTex = true;
         if (f.V((id0+1)%3) == c.V(1)) id1 = (id0+1)%3;
         else if (f.V((id0+2)%3) == c.V(1)) id1 = (id0+2)%3;
         else updateWedgeTex = false;
 
-        if(updateWedgeTex)
+        if (updateWedgeTex)
           mt = (f.WT(id0).P()+f.WT(id1).P())/2.;
       }
 

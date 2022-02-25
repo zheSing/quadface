@@ -31,7 +31,7 @@ class TextureProcess
     static void BottomFlatTriangle(TexCoordType *t,
                                    vcg::Point3i &sum,
                                    size_t &count,
-                                   cv::Mat &img,
+                                   const cv::Mat &img,
                                    bool debugmsg = false)
     {
         if (debugmsg)
@@ -101,7 +101,7 @@ class TextureProcess
     static void TopFlatTriangle(TexCoordType *t,
                                 vcg::Point3i &sum,
                                 size_t &count,
-                                cv::Mat &img,
+                                const cv::Mat &img,
                                 bool debugmsg = false)
     {
         if (debugmsg)
@@ -168,7 +168,7 @@ class TextureProcess
     }
 
     static ColorType AverageFaceColor(FacePointer F,
-                                      cv::Mat &img,
+                                      const cv::Mat &img,
                                       bool debugmsg = false)
     {
         TexCoordType t[4];
@@ -393,7 +393,7 @@ class TextureProcess
     }
 
 public:
-    static void SetUpAvgColor(MeshType &mesh, cv::Mat &img)
+    static void SetUpAvgColor(MeshType &mesh, const cv::Mat &img)
     {
         for (size_t i = 0; i < mesh.face.size(); i++)
         {
@@ -452,7 +452,7 @@ public:
     }
 
     static bool SegmentTexture(MeshType &mesh,
-                               cv::Mat &img,
+                               const cv::Mat &img,
                                ScalarType k = 100,
                                bool debugmsg = false)
     {
@@ -462,8 +462,6 @@ public:
         SetUpAvgColor(mesh, img);
 
         mesh.UpdateDataStructures();
-
-        // mark 
 
         std::vector<WeightedEdge> edges;
         CreateGraph(mesh, edges);

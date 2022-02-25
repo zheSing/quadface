@@ -921,7 +921,29 @@ private:
         /* LZ Change
         - do not collapse feature edge
         */
-        if (p.IsEdgeS()) return false;
+        PosType cur = p;
+        do
+        {
+            if (cur.f->IsD())
+                return false;
+            if (cur.IsEdgeS())
+                return false;
+            cur.FlipE();
+            cur.FlipF();
+        } while (cur.f != p.f);
+
+        PosType pflpv = p;
+        pflpv.FlipV();
+        cur.FlipV();
+        do
+        {
+            if (cur.f->IsD())
+                return false;
+            if (cur.IsEdgeS())
+                return false;
+            cur.FlipE();
+            cur.FlipF();
+        } while (cur.f != pflpv.f);
         
         const ScalarType quality = params.adapt ? ((p.V()->Q()+ p.VFlip()->Q())/(ScalarType)2.0) : 0;
 
