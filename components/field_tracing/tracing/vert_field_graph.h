@@ -1478,9 +1478,9 @@ void SplitAdjacentSingularities(MeshType &mesh)
         vcg::TexCoord2<ScalarType> WedgeInterp(vcg::TexCoord2<ScalarType> &t0,
                                                vcg::TexCoord2<ScalarType> &t1)
         {
-            (void)t0;
-            (void)t1;
-            return (vcg::TexCoord2<ScalarType>(0,0));
+            vcg::TexCoord2<ScalarType> rt;
+            rt.P() = (t0.P() + t1.P()) / 2;
+            return rt;
         }
 
         SplitLev(std::map<CoordPair,CoordType> *_SplitOps){SplitOps=_SplitOps;}
@@ -1512,6 +1512,7 @@ void SplitAdjacentSingularities(MeshType &mesh)
     };
 
 
+    // Select all singularity
     //InitFeatureCoordsTable();
     vcg::tri::UpdateSelection<MeshType>::VertexClear(mesh);
     for (size_t i=0;i<mesh.vert.size();i++)
@@ -1522,6 +1523,7 @@ void SplitAdjacentSingularities(MeshType &mesh)
     }
 
     //then also split single sharp edges
+    // VertCreases: value of a vertex is the number of sharp edge it belongs to.
     std::vector<size_t> VertCreases(mesh.vert.size(),0);
     for (size_t i=0;i<mesh.face.size();i++)
     {
@@ -1537,6 +1539,8 @@ void SplitAdjacentSingularities(MeshType &mesh)
         }
     }
 
+    // ToBeSplitted: map a coordinate pair need splitted to the mid point after splitted.
+    // Creases: content all coordinate pair that is a sharp edge.
     std::map<CoordPair,CoordType> ToBeSplitted;
     std::vector<CoordPair> Creases;
     for (size_t i=0;i<mesh.face.size();i++)
@@ -1553,6 +1557,9 @@ void SplitAdjacentSingularities(MeshType &mesh)
             size_t IndexV0=vcg::tri::Index(mesh,mesh.face[i].V0(j));
             size_t IndexV1=vcg::tri::Index(mesh,mesh.face[i].V1(j));
             bool SplitForSingleE=((VertCreases[IndexV0]==1)&&(VertCreases[IndexV1]==1));
+
+            // Condition that a edge need splitted: one of vertices is a singularity,
+            //                                      or it's a single sharp edge not adjacent by others 
             if (SplitForSing || SplitForSingleE)
             {
                 CoordType Avg=(P0+P1)/2;
