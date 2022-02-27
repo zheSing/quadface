@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
     PTr.InitTracer(Drift,false);
     RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,true,meta_mesh_collapse,force_split,true,false);
     // todo: not finished yet.
-    // PTr.SmoothPatches();
+    PTr.SmoothPatches();
     SaveAllData(PTr,pathProject,0,false,false);
 
 

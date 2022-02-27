@@ -984,13 +984,13 @@ void quadrangulate(
 
         //Smoothing
         // todo: not finish yet.
-        // if (chartSmoothingIterations > 0) {
-        //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulatedChartMesh);
-        //     for (size_t vId : patchBorders) {
-        //         quadrangulatedChartMesh.vert[vId].ClearS();
-        //     }
-        //     vcg::PolygonalAlgorithm<PolyMeshType>::LaplacianReproject(quadrangulatedChartMesh, chartSmoothingIterations, 0.5, true);
-        // }
+        if (chartSmoothingIterations > 0) {
+            vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulatedChartMesh);
+            for (size_t vId : patchBorders) {
+                quadrangulatedChartMesh.vert[vId].ClearS();
+            }
+            vcg::PolygonalAlgorithm<PolyMeshType>::LaplacianReproject(quadrangulatedChartMesh, chartSmoothingIterations, 0.5, true);
+        }
 
         std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
         std::vector<int> currentVertexMap(quadrangulatedChartMesh.vert.size(), -1);
@@ -1328,35 +1328,35 @@ void quadrangulate(
 #endif
 
     // todo: not finished yet.
-    // if (quadrangulationFixedSmoothingIterations > 0) {
-    //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
-    //     for (const size_t& fixedVertexId : quadrangulationVerticesBetweenPatch) {
-    //         if (quadrangulation.vert[fixedVertexId].IsD())
-    //             continue;
+    if (quadrangulationFixedSmoothingIterations > 0) {
+        vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
+        for (const size_t& fixedVertexId : quadrangulationVerticesBetweenPatch) {
+            if (quadrangulation.vert[fixedVertexId].IsD())
+                continue;
 
-    //         quadrangulation.vert[fixedVertexId].ClearS();
-    //     }
+            quadrangulation.vert[fixedVertexId].ClearS();
+        }
 
-    //     vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationFixedSmoothingIterations, 0.7, 0.7, true);
-    // }
+        vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationFixedSmoothingIterations, 0.7, 0.7, true);
+    }
 
 #ifdef QUADRETOPOLOGY_DEBUG_SAVE_MESHES
     vcg::tri::io::ExporterOBJ<PolyMeshType>::Save(quadrangulation, "results/quadrangulation_5_smoothed_fixed.obj", vcg::tri::io::Mask::IOM_NONE);
 #endif
 
     // todo: not finished yet.
-    // if (quadrangulationNonFixedSmoothingIterations > 0) {
-    //     vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
-    //     for (size_t i=0;i<quadrangulation.vert.size();i++) {
-    //         if (quadrangulation.vert[i].IsD())
-    //             continue;
-    //         if (quadrangulation.vert[i].IsB()) {
-    //             quadrangulation.vert[i].ClearS();
-    //         }
-    //     }
+    if (quadrangulationNonFixedSmoothingIterations > 0) {
+        vcg::tri::UpdateSelection<PolyMeshType>::VertexAll(quadrangulation);
+        for (size_t i=0;i<quadrangulation.vert.size();i++) {
+            if (quadrangulation.vert[i].IsD())
+                continue;
+            if (quadrangulation.vert[i].IsB()) {
+                quadrangulation.vert[i].ClearS();
+            }
+        }
 
-    //     vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationNonFixedSmoothingIterations, 0.7, 0.7, true);
-    // }
+        vcg::PolygonalAlgorithm<PolyMeshType>::template LaplacianReproject<TriangleMeshType>(quadrangulation, newSurface, quadrangulationNonFixedSmoothingIterations, 0.7, 0.7, true);
+    }
 
     vcg::PolygonalAlgorithm<PolyMeshType>::UpdateFaceNormalByFitting(quadrangulation);
     vcg::tri::UpdateNormal<PolyMeshType>::PerVertexNormalized(quadrangulation);

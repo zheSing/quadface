@@ -844,7 +844,8 @@ void RecursiveProcess(TracerType &PTr,
 
     if (DebugMsg)
         std::cout<<"Smoothing"<<std::endl;
-    // PTr.SmoothPatches(10,0.5,CheckSurfaceFolds);
+    // todo: smooth while preserving uv
+    PTr.SmoothPatches(10,0.5,CheckSurfaceFolds);
     if (DebugMsg)
         std::cout<<"End Smoothing"<<std::endl;
 

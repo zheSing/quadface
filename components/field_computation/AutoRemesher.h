@@ -404,7 +404,8 @@ public:
         //vcg::tri::UpdateSelection<Mesh>::VertexClear(m);
         collapseSurvivingMicroEdges(m,thr);
 
-        // UpdateCoherentSharp(m,par);
+        // would affect uv
+        UpdateCoherentSharp(m,par);
 
         para.adapt = true;
         para.smoothFlag   = true;
