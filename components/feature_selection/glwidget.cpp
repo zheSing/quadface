@@ -41,10 +41,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <math.h>
 #include "glwidget.h"
 #include "mesh_manager.h"
+#include "ray_intersection.h"
+#include "bvh.h"
 #include "fields/field_smoother.h"
 #include "feature_texture.h"
 #include "triangle_mesh_type.h"
-#include "poly_mesh_type.h"
+// #include "poly_mesh_type.h"
 #include <wrap/qt/trackball.h>
 #include <wrap/gl/picking.h>
 #include <wrap/qt/anttweakbarMapper.h>
@@ -120,6 +122,11 @@ int feature_erode_dilate=4;
 
 //MeshPrepocess<FieldTriMesh> MP(tri_mesh);
 
+enum gui_mode{ None, Vertex, Edge } uimode, uimode_;
+
+BVHT<FieldTriMesh> bvh_tree;
+std::vector<CoordType> vertices_added;
+
 void InitSharp()
 {
     assert(!(has_features || has_features_fl));
@@ -149,6 +156,49 @@ void DoBatchProcess ()
     BPar.UpdateSharp=(!(has_features || has_features_fl));
     MeshPrepocess<FieldTriMesh>::BatchProcess(tri_mesh,BPar,FieldParam);
     drawfield=true;
+}
+
+
+void TW_CALL VertexUndo(void*)
+{
+
+}
+
+void TW_CALL VertexRedo(void*)
+{
+
+}
+
+void TW_CALL VertexConfirm(void*)
+{
+    uimode_ = None;
+}
+
+void TW_CALL VertexCancel(void*)
+{
+    uimode_ = None;
+}
+
+void TW_CALL AddVertices(void*)
+{
+    uimode_ = Vertex;
+}
+
+void TW_CALL EdgeConfirm(void*)
+{
+    uimode_ = None;
+}
+
+void TW_CALL SelectFeatures(void*)
+{
+    uimode_ = Edge;
+}
+
+void SaveFeatures()
+{
+    size_t indexExt=pathM.find_last_of(".");       
+    std::string projM = pathM.substr(0,indexExt);
+    tri_mesh.SaveSharpFeatures(projM+".sharp");
 }
 
 void DoAutoRemesh()
@@ -277,46 +327,53 @@ void SetFieldBarSizePosition(QWidget *w)
 
 void InitFieldBar(QWidget *w)
 {
-    barQuad = TwNewBar("QuadWild");
+    if (uimode == None)
+    {
+        TwDeleteAllBars();
 
-    SetFieldBarSizePosition(w);
+        barQuad = TwNewBar("QuadWild");
 
-	TwAddVarRW(barQuad,"sharp_feature_thr",TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
-    TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &tri_mesh.LimitConcave," label='Limit Concave'");
-    //TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &MP.LimitConcave," label='Limit Concave'");
+        SetFieldBarSizePosition(w);
 
-    TwAddButton(barQuad,"CleanMesh",CleanMesh,0,"label='CleanMesh'");
+        TwAddButton(barQuad, "AddVertices", AddVertices, 0, "label='AddVertices'");
+        TwAddButton(barQuad, "SelectFeatures", SelectFeatures, 0, "label='SelectFeatures'");
 
-    TwAddButton(barQuad,"SetSharp",InitSharpFeatures,0,"label='InitSharp'");
+        // TwAddVarRW(barQuad,"sharp_feature_thr",TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
+        // TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &tri_mesh.LimitConcave," label='Limit Concave'");
+        //TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &MP.LimitConcave," label='Limit Concave'");
 
-	TwAddVarRW(barQuad,"ErodeDilSteps",TW_TYPE_INT32,&feature_erode_dilate,"label='ErodeDilateSteps'");
+        // TwAddButton(barQuad,"CleanMesh",CleanMesh,0,"label='CleanMesh'");
 
-    TwAddButton(barQuad,"Erode Dilate",ErodeDilateFeatureStep,0,"label='ErodeDilateSharp'");
+        // TwAddButton(barQuad,"SetSharp",InitSharpFeatures,0,"label='InitSharp'");
 
-    TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
+        // TwAddVarRW(barQuad,"ErodeDilSteps",TW_TYPE_INT32,&feature_erode_dilate,"label='ErodeDilateSteps'");
 
-    TwAddButton(barQuad,"Refine",RefineIfNeeded,0,"label='Refine if needed'");
+        // TwAddButton(barQuad,"Erode Dilate",ErodeDilateFeatureStep,0,"label='ErodeDilateSharp'");
 
-    TwAddVarRW(barQuad,"Alpha",TW_TYPE_DOUBLE, &FieldParam.alpha_curv," label='Alpha Curvature'");
-    TwAddVarRW(barQuad,"HardCT",TW_TYPE_DOUBLE, &FieldParam.curv_thr," label='Hard Curv Thr'");
-    TwAddVarRW(barQuad,"CurvRing",TW_TYPE_INT32,&FieldParam.curvRing,"label='Curvature Ring'");
+        // TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
 
-    TwEnumVal smoothmodes[3] = {
-        {vcg::tri::SMMiq,"MIQ"},
-        {vcg::tri::SMNPoly,"NPoly"},
-        {vcg::tri::SMIterative,"Ite"}
-    };
-    TwType smoothMode = TwDefineEnum("SmoothMode", smoothmodes, 3);
-    TwAddVarRW(barQuad, "Smooth Mode", smoothMode, &FieldParam.SmoothM," label='Smooth Mode' ");
+        // TwAddButton(barQuad,"Refine",RefineIfNeeded,0,"label='Refine if needed'");
+
+        // TwAddVarRW(barQuad,"Alpha",TW_TYPE_DOUBLE, &FieldParam.alpha_curv," label='Alpha Curvature'");
+        // TwAddVarRW(barQuad,"HardCT",TW_TYPE_DOUBLE, &FieldParam.curv_thr," label='Hard Curv Thr'");
+        // TwAddVarRW(barQuad,"CurvRing",TW_TYPE_INT32,&FieldParam.curvRing,"label='Curvature Ring'");
+
+        // TwEnumVal smoothmodes[3] = {
+        //     {vcg::tri::SMMiq,"MIQ"},
+        //     {vcg::tri::SMNPoly,"NPoly"},
+        //     {vcg::tri::SMIterative,"Ite"}
+        // };
+        // TwType smoothMode = TwDefineEnum("SmoothMode", smoothmodes, 3);
+        // TwAddVarRW(barQuad, "Smooth Mode", smoothMode, &FieldParam.SmoothM," label='Smooth Mode' ");
 
 
-    TwAddButton(barQuad,"AutoSetup",AutoSetupField,0,"label='Auto Setup Field'");
+        // TwAddButton(barQuad,"AutoSetup",AutoSetupField,0,"label='Auto Setup Field'");
 
-    TwAddButton(barQuad,"ComputeField",SmoothField,0,"label='Compute Field'");
+        // TwAddButton(barQuad,"ComputeField",SmoothField,0,"label='Compute Field'");
 
-    TwAddButton(barQuad,"BatchProcess",BatchProcess,0,"label='Batch Process'");
+        // TwAddButton(barQuad,"BatchProcess",BatchProcess,0,"label='Batch Process'");
 
-    TwAddButton(barQuad,"SaveData",SaveData,0,"label='Save Data'");
+        // TwAddButton(barQuad,"SaveData",SaveData,0,"label='Save Data'");
 
 #ifdef MIQ_QUADRANGULATE
     TwAddSeparator(barQuad,"","");
@@ -327,13 +384,31 @@ void InitFieldBar(QWidget *w)
     TwAddVarRW(barQuad,"Align Sharp",TW_TYPE_BOOLCPP, & MiqP.crease_as_feature," label='Align Sharp'");
     TwAddButton(barQuad,"Quadrangulate",MiqQuadrangulate,0,"label='Miq Quadrangulate'");
 #endif
+    }
 
+    else if (uimode == Vertex)
+    {
+        TwDeleteAllBars();
+        barQuad = TwNewBar("Press right mouse button to add vertex...");
+        TwAddButton(barQuad, "undo", VertexUndo, 0, "laberl='VertexUndo'");
+        TwAddButton(barQuad, "redo", VertexRedo, 0, "laberl='VertexRedo'");
+        TwAddButton(barQuad, "cancel", VertexCancel, 0, "laberl='VertexCancel'");
+        TwAddButton(barQuad, "confirm", VertexConfirm, 0, "laberl='VertexConfirm'");
+    }
+
+    else 
+    {
+        TwDeleteAllBars();
+        barQuad = TwNewBar("Press right mouse to select/unselect sharp edge...");
+        TwAddButton(barQuad, "confirm", EdgeConfirm, 0, "laberl='EdgeConfirm'");
+    }
 }
 
 
 GLWidget::GLWidget(QWidget *parent)
     : QOpenGLWidget(parent)
 {
+    uimode = uimode_ = None;
     hasToPick=false;
     bool AllQuad=false;
     bool Loaded=tri_mesh.LoadTriMesh(pathM,AllQuad);
@@ -351,6 +426,11 @@ GLWidget::GLWidget(QWidget *parent)
     }
     std::cout<<"Loaded "<<tri_mesh.face.size()<<" faces "<<std::endl;
     std::cout<<"Loaded "<<tri_mesh.vert.size()<<" vertices "<<std::endl;
+
+    std::cout<<"Initializing BVH tree..."<<std::endl;
+    bvh_tree.BuildTree(tri_mesh); 
+    std::cout<<"BVH tree established."<<std::endl;
+
 
     glWrap.m=&tri_mesh;
 
@@ -387,6 +467,11 @@ GLWidget::GLWidget(QWidget *parent)
         //bool HasRead=MP.LoadSharpFeaturesFL(pathS);
         assert(HasRead);
     }
+
+
+    CoordType test(0.5, 0, 2.0);
+    vertices_added.push_back(test);
+    
 
 //    if ((do_batch)&&(!has_features))
 //    {
@@ -449,6 +534,11 @@ void GLWidget::paintGL ()
     //        PatchDeco.ColorPatches(RType);
     //        OldRType=RType;
     //    }
+    if (uimode != uimode_)
+    {
+        uimode = uimode_;
+        InitFieldBar(this);
+    }
 
     glClearColor(255,255,255,255);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -461,6 +551,7 @@ void GLWidget::paintGL ()
     track.center=vcg::Point3f(0, 0, 0);
     track.radius= 1;
     track.GetView();
+
 
     glPushMatrix();
     track.Apply();
@@ -476,6 +567,7 @@ void GLWidget::paintGL ()
         glTranslate(-tri_mesh.bbox.Center());
         //tri_mesh.GLDrawSharpEdges();
         GLDrawSharpEdges(tri_mesh);
+        GLDrawAddedVertices(vertices_added);
         //MP.GLDrawSharpEdges();
         glWrap.Draw(vcg::GLW::DMFlat,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
@@ -567,6 +659,55 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
         e->accept ();
         setFocus ();
         track.MouseDown(QT2VCG_X(this, e), QT2VCG_Y(this, e), QT2VCG (e->button (), e->modifiers ()));
+
+        if (uimode != None && e->button() == Qt::RightButton)
+        {
+            int x = QT2VCG_X(this, e);
+            int y = QT2VCG_Y(this, e);
+
+            std::cout << "Right Press: " << x << ", " << y << std::endl;
+
+            double coordx = (2 * (x + 0.5f) / (double)width() - 1) * tan(M_PI / 9) * 0.1 * ((double)width() / height());
+            double coordy = (2 * (y + 0.5f) / (double)height() - 1) * tan(M_PI / 9) * 0.1;
+
+            std::cout << "Double: " << coordx << ", " << coordy << std::endl;
+
+
+            // for (size_t i = 0; i < 10; i++)
+            // {  
+            //     CoordType tmp = ray(1+i*0.5);
+            //     vertices_added.push_back(tmp);
+            //     std::cout << tmp[0] << ", " << tmp[1] << ", " << tmp[2] << std::endl;
+            // }
+            // vertices_added.push_back(CoordType(coordx, coordy, 3.4));
+
+            std::cout << width() <<  ", " << height() << std::endl;
+                    
+            vcg::Matrix44f srt_inv = track.track.InverseMatrix();
+            vcg::Matrix44f s_inv, t_inv;
+            float inv_s = tri_mesh.bbox.Diag()/2.0f;
+            s_inv.SetScale(inv_s, inv_s, inv_s);
+            t_inv.SetTranslate(tri_mesh.bbox.Center());
+
+            vcg::Matrix44f m_inv = t_inv * s_inv *srt_inv;
+
+            vcg::Point3f pixel(coordx, coordy, 3.4f);
+            vcg::Point3f eye(0, 0, 3.5f);
+
+            pixel = m_inv * pixel;
+            eye = m_inv * eye;
+            Ray<ScalarType> ray(eye, pixel-eye);            
+
+            if (uimode == Vertex)
+            {
+                Intersection<ScalarType> inter;
+                if (bvh_tree.Intersect(ray, inter))
+                {
+                    std::cout << "Intersection happended!\n";
+                    vertices_added.push_back(inter.pos);
+                }
+            }
+        }
     }
     update ();
 }

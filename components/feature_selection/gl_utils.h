@@ -58,6 +58,25 @@ void GLDrawSharpEdges(MeshType &mesh)
     glPopAttrib();
 }
 
+template<typename ScalarType>
+void GLDrawAddedVertices(const std::vector<vcg::Point3<ScalarType>>& vlist)
+{    
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glEnable(GL_COLOR_MATERIAL);
+    glDisable(GL_LIGHTING);
+    glDepthRange(0,0.9999);
+    glPointSize(10);
+    glBegin(GL_POINTS);
+
+    for (auto v: vlist)
+    {
+        vcg::glColor(vcg::Color4b(0,255,0,255));
+        vcg::glVertex(v);
+    }
+    
+    glEnd();
+    glPopAttrib();
+}
 
 
 #endif

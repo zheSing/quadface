@@ -25,7 +25,7 @@ DEFINES += INCLUDE_TEMPLATES
 ############################ TARGET ############################
 
 #App config
-TARGET = field_computation
+TARGET = feature_selection
 
 TEMPLATE = app
 CONFIG += qt

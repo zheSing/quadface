@@ -36,6 +36,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <wrap/gui/trackball.h>
 #include <AntTweakBar.h>
 #include <QDir>
+#include "bvh.h"
 
 class GLWidget : public QOpenGLWidget
 {
