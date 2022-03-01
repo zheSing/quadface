@@ -734,7 +734,7 @@ namespace vcg
 		{
 			//const float ZTWIST=HNParamf[HNPZTwist];
 			//glDepthRange(ZTWIST,1.0f);
-			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT );
+			glPushAttrib(GL_ALL_ATTRIB_BITS );
 			glEnable(GL_POLYGON_OFFSET_FILL);
 			glPolygonOffset(1.0, 1);
 			DrawFill<nm,cm,tm>();
@@ -837,9 +837,22 @@ namespace vcg
 			}
 			else
 			{
-				glPushAttrib(GL_POLYGON_BIT);
-				glPolygonMode(GL_FRONT_AND_BACK ,GL_LINE);
-				DrawFill<nm,cm,TMNone>();
+				// glPushAttrib(GL_POLYGON_BIT);
+				// glPolygonMode(GL_FRONT_AND_BACK ,GL_LINE);
+				// DrawFill<nm,cm,TMNone>();
+				// glPopAttrib();
+				glPushAttrib(GL_ENABLE_BIT);
+				glDisable(GL_LIGHTING);
+				glBegin(GL_LINES);
+				for (auto f: m->face)
+				{
+					for (size_t i = 0; i < f.VN(); i++)
+					{
+						glVertex(f.V0(i)->P());
+						glVertex(f.V1(i)->P());
+					}
+				}
+				glEnd();
 				glPopAttrib();
 			}
 			if(m->fn==0 && m->en>0)
