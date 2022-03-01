@@ -4,7 +4,8 @@ include(../../libs/libs.pri)
 
 HEADERS = \
     glwidget.h \
-    triangle_mesh_type.h
+    triangle_mesh_type.h \
+    mesh_manager.h
 
 SOURCES = \
     glwidget.cpp \

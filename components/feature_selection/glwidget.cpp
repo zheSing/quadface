@@ -45,6 +45,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "bvh.h"
 #include "fields/field_smoother.h"
 #include "feature_texture.h"
+#include "history_queue.h"
+#include "add_vertex.h"
 #include "triangle_mesh_type.h"
 // #include "poly_mesh_type.h"
 #include <wrap/qt/trackball.h>
@@ -124,8 +126,11 @@ int feature_erode_dilate=4;
 
 enum gui_mode{ None, Vertex, Edge } uimode, uimode_;
 
+typedef Intersection<ScalarType> InterType;
+typedef Ray<ScalarType> RayType;
+
 BVHT<FieldTriMesh> bvh_tree;
-std::vector<CoordType> vertices_added;
+HistoryQueue<InterType> vertices_added;
 
 void InitSharp()
 {
@@ -161,22 +166,25 @@ void DoBatchProcess ()
 
 void TW_CALL VertexUndo(void*)
 {
-
+    vertices_added.Undo();
 }
 
 void TW_CALL VertexRedo(void*)
 {
-
+    vertices_added.Redo();
 }
 
 void TW_CALL VertexConfirm(void*)
 {
     uimode_ = None;
+    ExtraVertexProcess<MeshType>::AddExtraVertex(tri_mesh, bvh_tree, vertices_added.HistoryList());
+    vertices_added.Clear();
 }
 
 void TW_CALL VertexCancel(void*)
 {
     uimode_ = None;
+    vertices_added.Clear();
 }
 
 void TW_CALL AddVertices(void*)
@@ -467,12 +475,7 @@ GLWidget::GLWidget(QWidget *parent)
         //bool HasRead=MP.LoadSharpFeaturesFL(pathS);
         assert(HasRead);
     }
-
-
-    CoordType test(0.5, 0, 2.0);
-    vertices_added.push_back(test);
     
-
 //    if ((do_batch)&&(!has_features))
 //    {
 ////        bool SufficientFeatures=mesh.SufficientFeatures(SharpFactor);
@@ -567,9 +570,9 @@ void GLWidget::paintGL ()
         glTranslate(-tri_mesh.bbox.Center());
         //tri_mesh.GLDrawSharpEdges();
         GLDrawSharpEdges(tri_mesh);
-        GLDrawAddedVertices(vertices_added);
+        GLDrawAddedVertices(vertices_added.HistoryList());
         //MP.GLDrawSharpEdges();
-        glWrap.Draw(vcg::GLW::DMFlat,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
+        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
     }
 
@@ -665,46 +668,32 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
             int x = QT2VCG_X(this, e);
             int y = QT2VCG_Y(this, e);
 
-            std::cout << "Right Press: " << x << ", " << y << std::endl;
-
             double coordx = (2 * (x + 0.5f) / (double)width() - 1) * tan(M_PI / 9) * 0.1 * ((double)width() / height());
             double coordy = (2 * (y + 0.5f) / (double)height() - 1) * tan(M_PI / 9) * 0.1;
 
-            std::cout << "Double: " << coordx << ", " << coordy << std::endl;
-
-
-            // for (size_t i = 0; i < 10; i++)
-            // {  
-            //     CoordType tmp = ray(1+i*0.5);
-            //     vertices_added.push_back(tmp);
-            //     std::cout << tmp[0] << ", " << tmp[1] << ", " << tmp[2] << std::endl;
-            // }
-            // vertices_added.push_back(CoordType(coordx, coordy, 3.4));
-
-            std::cout << width() <<  ", " << height() << std::endl;
-                    
+            // from world to model        
             vcg::Matrix44f srt_inv = track.track.InverseMatrix();
             vcg::Matrix44f s_inv, t_inv;
             float inv_s = tri_mesh.bbox.Diag()/2.0f;
             s_inv.SetScale(inv_s, inv_s, inv_s);
             t_inv.SetTranslate(tri_mesh.bbox.Center());
-
             vcg::Matrix44f m_inv = t_inv * s_inv *srt_inv;
 
+            // ray construction
             vcg::Point3f pixel(coordx, coordy, 3.4f);
             vcg::Point3f eye(0, 0, 3.5f);
-
             pixel = m_inv * pixel;
             eye = m_inv * eye;
-            Ray<ScalarType> ray(eye, pixel-eye);            
+            RayType ray(eye, pixel-eye);            
 
+            // collide detection
             if (uimode == Vertex)
             {
-                Intersection<ScalarType> inter;
+                InterType inter;
                 if (bvh_tree.Intersect(ray, inter))
                 {
                     std::cout << "Intersection happended!\n";
-                    vertices_added.push_back(inter.pos);
+                    vertices_added.Insert(inter);
                 }
             }
         }

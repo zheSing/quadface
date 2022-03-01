@@ -28,6 +28,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 #include <wrap/gl/trimesh.h>
+#include "ray_intersection.h"
 
 template <class MeshType>
 void GLDrawSharpEdges(MeshType &mesh)
@@ -59,7 +60,7 @@ void GLDrawSharpEdges(MeshType &mesh)
 }
 
 template<typename ScalarType>
-void GLDrawAddedVertices(const std::vector<vcg::Point3<ScalarType>>& vlist)
+void GLDrawAddedVertices(const std::vector<Intersection<ScalarType>>& interList)
 {    
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glEnable(GL_COLOR_MATERIAL);
@@ -68,10 +69,10 @@ void GLDrawAddedVertices(const std::vector<vcg::Point3<ScalarType>>& vlist)
     glPointSize(10);
     glBegin(GL_POINTS);
 
-    for (auto v: vlist)
+    for (auto v: interList)
     {
         vcg::glColor(vcg::Color4b(0,255,0,255));
-        vcg::glVertex(v);
+        vcg::glVertex(v.pos);
     }
     
     glEnd();

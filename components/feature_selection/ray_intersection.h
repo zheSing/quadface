@@ -27,11 +27,12 @@ template<typename T>
 struct Intersection
 {        
     T dist;
+    size_t idx;
     bool happened;  
     vcg::Point3<T> pos;
-    void* ptr;
+    vcg::Point3<T> bary;
 
-    Intersection(): happened(false), pos(), dist(std::numeric_limits<T>::max()), ptr(nullptr) {    pos.SetZero();  }
+    Intersection(): happened(false), pos(), bary(), dist(std::numeric_limits<T>::max()), idx() {  pos.SetZero(); bary.SetZero(); }
 };
 
 #endif

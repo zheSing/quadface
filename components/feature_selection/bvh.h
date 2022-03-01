@@ -11,7 +11,7 @@ template<class MeshType>
 class BVHT
 {
     typedef typename MeshType::ScalarType ScalarType;
-    typedef typename MeshType::FaceType FaceType;
+    typedef typename MeshType::FacePointer FacePointer;
     typedef typename vcg::Box3<ScalarType> BoxType;
     typedef typename vcg::Point3<ScalarType> PointType;
 
@@ -31,8 +31,9 @@ public:
 
     void BuildTree(MeshType& mesh)
     {
+        mptr = &mesh;
         Clear(root);
-        std::vector<FaceType*> fplist;
+        std::vector<FacePointer> fplist;
         for (size_t i = 0; i < mesh.face.size(); i++)
             fplist.push_back(&mesh.face[i]);
         root = BuildTreeRecur(fplist);
@@ -44,6 +45,22 @@ public:
         return IntersectRecur(root, ray, inter);
     }
 
+    bool Replace(FacePointer fp, std::vector<FacePointer>fplist)
+    {
+        if (fp == nullptr)
+            return false;
+
+        BVHN** pptr;
+        PointType c = GetBBox(fp).Center();
+        if (FindRecur(root, fp, c, pptr))
+        {
+            Clear(*pptr);
+            *pptr = BuildTreeRecur(fplist);
+            return true;
+        }
+        return false;
+    }
+
 private:
 
     struct BVHN
@@ -51,7 +68,7 @@ private:
         BoxType bbox;
         BVHN* left;
         BVHN* right;
-        FaceType* obj;
+        FacePointer obj;
         BVHN(): bbox(), left(nullptr), right(nullptr), obj(nullptr) {   bbox.SetNull(); }
     };
 
@@ -63,6 +80,26 @@ private:
             Clear(node->right);
             delete node;
         }
+    }
+
+    bool FindRecur(BVHN* node, FacePointer fp, PointType c, BVHN**& ret)
+    {
+        if (node == nullptr)
+            return false;
+
+        if (node->bbox.IsIn(c))
+        {
+            if (node->obj == fp)
+            {
+                ret = &node;
+                return true;
+            }
+            if (FindRecur(node->left, fp, c, ret))
+                return true;
+            if (FindRecur(node->right, fp, c, ret))
+                return true;
+        }
+        return false;
     }
 
     bool Intersect(const BoxType& bbox, const RayType& ray)
@@ -94,7 +131,7 @@ private:
         return false;
     }
 
-    bool Intersect(FaceType* fp, const RayType& ray, InterType& inter)
+    bool Intersect(FacePointer fp, const RayType& ray, InterType& inter)
     {
         inter.happened = false;
 
@@ -131,11 +168,12 @@ private:
         inter.happened = true;
         inter.pos = ray(t_tmp);
         inter.dist = t_tmp;
-        inter.ptr = (void*)fp;
+        inter.idx = vcg::tri::Index(*mptr, fp);
+        inter.bary = PointType(1-u-v, u, v);
         return true;
     }
 
-    BoxType GetBBox(FaceType* fp)
+    BoxType GetBBox(FacePointer fp)
     {
         BoxType box;
         fp->GetBBox(box);
@@ -170,8 +208,11 @@ private:
         return false;
     }
 
-    BVHN* BuildTreeRecur(std::vector<FaceType*> fplist)
+    BVHN* BuildTreeRecur(std::vector<FacePointer> fplist)
     {
+        if( fplist.size() == 0)
+            return nullptr;
+
         BVHN* node = new BVHN;
 
         if (fplist.size() == 1)
@@ -182,8 +223,8 @@ private:
         }
 
         else if (fplist.size() == 2){
-            node->left = BuildTreeRecur(std::vector<FaceType*>{fplist[0]});
-            node->right = BuildTreeRecur(std::vector<FaceType*>{fplist[1]});
+            node->left = BuildTreeRecur(std::vector<FacePointer>{fplist[0]});
+            node->right = BuildTreeRecur(std::vector<FacePointer>{fplist[1]});
             node->bbox.Add(node->left->bbox);
             node->bbox.Add(node->right->bbox);
         }
@@ -217,8 +258,8 @@ private:
             auto mid = fplist.begin() + fplist.size() / 2;
             auto end = fplist.end();
 
-            node->left = BuildTreeRecur(std::vector<FaceType*>(start, mid));
-            node->right = BuildTreeRecur(std::vector<FaceType*>(mid, end));
+            node->left = BuildTreeRecur(std::vector<FacePointer>(start, mid));
+            node->right = BuildTreeRecur(std::vector<FacePointer>(mid, end));
 
             node->bbox.Add(node->left->bbox);
             node->bbox.Add(node->right->bbox);
@@ -227,6 +268,7 @@ private:
     }
 
     BVHN* root;
+    MeshType* mptr;
 };
 
 
