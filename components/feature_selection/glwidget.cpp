@@ -131,6 +131,8 @@ typedef Ray<ScalarType> RayType;
 
 BVHT<FieldTriMesh> bvh_tree;
 HistoryQueue<InterType> vertices_added;
+cv::Mat texture;
+u_int tID;
 
 void InitSharp()
 {
@@ -446,16 +448,21 @@ GLWidget::GLWidget(QWidget *parent)
 
     if (has_texture)
     {
-        cv::Mat img, imgrgb;
-        cv::flip(cv::imread(pathT, cv::ImreadModes::IMREAD_COLOR), img, 0);
-        cv::cvtColor(img, imgrgb, cv::COLOR_BGR2RGB);
+        cv::flip(cv::imread(pathT, cv::ImreadModes::IMREAD_COLOR), texture, 0);
+
+        // glGenTextures(1, &tID);
+        // glBindTexture(GL_TEXTURE_2D, tID);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture.cols, texture.rows, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, texture.ptr());
+        // std::cout << texture.cols << ", " << texture.rows << std::endl;
         // FieldTriMesh::ScalarType thereshold;
         // TextureProcess::SetUpAvgColor(tri_mesh, imgrgb, thereshold);
         // TextureProcess::ExtractTexFeature(tri_mesh, imgrgb);
-        tri_mesh.UpdateDataStructures();
-        TextureProcess::TexCoordFeature(tri_mesh);
-        TextureProcess::SegmentTexture(tri_mesh, imgrgb, 250, true);
-        std::cout << "Color setup finished.\n";
+        // tri_mesh.UpdateDataStructures();
+        // TextureProcess::TexCoordFeature(tri_mesh);
+        // TextureProcess::SegmentTexture(tri_mesh, imgrgb, 250, true);
+        // std::cout << "Color setup finished.\n";
     }
 
     tri_mesh.LimitConcave=0;
@@ -518,6 +525,15 @@ void GLWidget::initializeGL ()
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+
+    if (has_texture)
+    {
+        glGenTextures(1, &tID);
+        glBindTexture(GL_TEXTURE_2D, tID);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, texture.cols, texture.rows, 0, GL_BGR_EXT, GL_UNSIGNED_BYTE, texture.ptr());
+    }
 }
 
 
@@ -572,7 +588,13 @@ void GLWidget::paintGL ()
         GLDrawSharpEdges(tri_mesh);
         GLDrawAddedVertices(vertices_added.HistoryList());
         //MP.GLDrawSharpEdges();
-        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMNone);
+        if (has_texture)
+        {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, tID);
+            glDisable(GL_BLEND);
+        }
+        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMPerWedge);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
     }
 

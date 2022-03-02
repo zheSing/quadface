@@ -734,7 +734,7 @@ namespace vcg
 		{
 			//const float ZTWIST=HNParamf[HNPZTwist];
 			//glDepthRange(ZTWIST,1.0f);
-			glPushAttrib(GL_ALL_ATTRIB_BITS );
+			glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT);
 			glEnable(GL_POLYGON_OFFSET_FILL);
 			glPolygonOffset(1.0, 1);
 			DrawFill<nm,cm,tm>();
@@ -743,7 +743,7 @@ namespace vcg
 			glEnable(GL_COLOR_MATERIAL);
 			glColorMaterial(GL_FRONT_AND_BACK,GL_AMBIENT_AND_DIFFUSE);
 			//glColorMaterial(GL_FRONT,GL_DIFFUSE);
-			glColor3f(.3f,.3f,.3f);
+			glColor4f(.3f,.3f,.3f,.5f);
 			DrawWire<nm,CMNone>();
 			glPopAttrib();
 			//glDepthRange(0,1.0f);
@@ -847,7 +847,9 @@ namespace vcg
 				for (auto f: m->face)
 				{
 					for (size_t i = 0; i < f.VN(); i++)
-					{
+					{			
+						if (f.IsD()) continue;
+						glColor4f(.3f,.3f,.3f,.5f);
 						glVertex(f.V0(i)->P());
 						glVertex(f.V1(i)->P());
 					}
