@@ -33,9 +33,13 @@ public:
     {
         mptr = &mesh;
         Clear(root);
+
         std::vector<FacePointer> fplist;
         for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            if (mesh.face[i].IsD()) continue;
             fplist.push_back(&mesh.face[i]);
+        }
         root = BuildTreeRecur(fplist);
     }
     
@@ -45,21 +49,21 @@ public:
         return IntersectRecur(root, ray, inter);
     }
 
-    bool Replace(FacePointer fp, std::vector<FacePointer>fplist)
-    {
-        if (fp == nullptr)
-            return false;
+    // bool Replace(FacePointer fp, std::vector<FacePointer>fplist)
+    // {
+    //     if (fp == nullptr)
+    //         return false;
 
-        BVHN** pptr;
-        PointType c = GetBBox(fp).Center();
-        if (FindRecur(root, fp, c, pptr))
-        {
-            Clear(*pptr);
-            *pptr = BuildTreeRecur(fplist);
-            return true;
-        }
-        return false;
-    }
+    //     BVHN** pptr;
+    //     PointType c = GetBBox(fp).Center();
+    //     if (FindRecur(root, fp, c, pptr))
+    //     {
+    //         Clear(*pptr);
+    //         *pptr = BuildTreeRecur(fplist);
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
 private:
 

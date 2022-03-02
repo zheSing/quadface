@@ -20,41 +20,139 @@ public:
     typedef vcg::Point3<ScalarType> CoordType;
     typedef vcg::Point2<ScalarType> TexCoordType;
 
+private:
+
+    static bool ConfirmFaceTopology(MeshType& mesh, size_t topo[][3], VertexPointer* vp, size_t faces)
+    {
+        return true;
+    }
+
+public:
+
     static size_t AddExtraVertex(MeshType& mesh, BVHT<MeshType>& bvh, const InterListType& inters)
     {   
         size_t count = 0;
 
         // topology
         const size_t new_idx[3][3] = {{1,3,0},{1,2,3},{3,2,0}};
+        const size_t edge_idx[3][2][3] = {{{0,1,3},{0,3,2}},
+                                            {{1,2,3},{1,3,0}},
+                                            {{2,0,3},{2,3,1}}};
+                                            
+        const double EPSILON = 0.1;
 
         // face history
         std::set<size_t> fp_set;
 
-        std::cout << "DEBUG: 1"  << std::endl;
-
         // traverse and add vertices
         for (size_t i = 0; i < inters.size(); i++)
         {
-            // set coord
-            VertexIterator vi = vcg::tri::Allocator<MeshType>::AddVertex(mesh, inters[i].pos);
-            
             // face...
             size_t idx = inters[i].idx;
 
-            std::cout << "DEBUG: 2"  << std::endl;
+            if (fp_set.find(idx) != fp_set.end())
+            {
+                std::cout << "Failed! Same face...\n";
+                continue;
+            }
 
             // not found, simply split face 
-            if (fp_set.find(idx) == fp_set.end())
+            FacePointer fp = &mesh.face[idx];
+
+            // judge if close to edge
+            CoordType bary = inters[i].bary;
+            size_t zeroc = 0, zeroid = 0;
+            for (size_t m = 0; m < 3; m++)
             {
-                std::cout << "DEBUG: 3"  << std::endl;
+                if (bary[m] < EPSILON)
+                {
+                    zeroid = m;
+                    zeroc++;
+                }
+            }
 
-                // insert into history
-                fp_set.insert(idx);
-                FacePointer fp = &mesh.face[idx];
+            // close to original vertex
+            if (zeroc >= 2)
+            {
+                std::cout << "Collide on vertex!\n";
+                continue;
+            }
 
-                // origin vertex
-                VertexPointer vp[4] = {fp->V(0),fp->V(1),fp->V(2),&(*vi)};
+            // insert into history
+            fp_set.insert(idx);
 
+            // set coord
+            VertexIterator vi = vcg::tri::Allocator<MeshType>::AddVertex(mesh, inters[i].pos);
+
+            // origin vertex
+            VertexPointer vp[4] = {fp->V(0),fp->V(1),fp->V(2),&(*vi)};
+            
+            // close to edge
+            if (zeroc == 1)
+            {
+                std::cout << "Collide on edge!\n";
+                
+                size_t edge = (zeroid + 1) % 3;
+
+                // reset bary
+                bary[zeroid] = 0;
+                double sum = bary[0] + bary[1] + bary[2];
+                for (size_t m = 0; m < 3; m++)
+                    bary[m] = bary[m] / sum;
+                vi->P() = (fp->P(0))*bary[0] + (fp->P(1))*bary[1] + (fp->P(2))*bary[2];               
+
+                // face adj
+                FacePointer fpp = fp->FFp(edge);
+                size_t zeroidp = (fp->FFi(edge) + 2) % 3;
+                size_t fpidx = vcg::tri::Index(mesh, fpp);
+                VertexPointer vpp[4] = {fpp->V(0),fpp->V(1),fpp->V(2),&(*vi)};
+
+                // what if find again?
+                if (fp_set.find(fpidx) != fp_set.end())
+                {
+                    //todo
+                }
+                else
+                {
+                    // inset into history
+                    fp_set.insert(fpidx);
+
+                    // cur face
+                    FaceIterator fi = vcg::tri::Allocator<MeshType>::AddFaces(mesh, 2);
+                    for (size_t m = 0; m < 2; m++)
+                        for (size_t n = 0; n < 3; n++)
+                            (fi+m)->V(n) = vp[edge_idx[zeroid][m][n]];
+
+                    // opp face
+                    FaceIterator fip = vcg::tri::Allocator<MeshType>::AddFaces(mesh, 2);
+                    for (size_t m = 0; m < 2; m++)
+                        for (size_t n = 0; n < 3; n++)
+                            (fip+m)->V(n) = vpp[edge_idx[zeroidp][m][n]];
+                    
+                    // reset fp
+                    fp = &mesh.face[idx];
+                    fpp = &mesh.face[fpidx];
+                    
+                    if (fp->HasWedgeTexCoord())
+                    {
+                        TexCoordType texs[4] = { fp->WT(0).P(), fp->WT(1).P(), fp->WT(2).P() };
+                        texs[3] = bary[0]*texs[0] + bary[1]*texs[1] + bary[2]*texs[2];
+                        for (size_t m = 0; m < 2; m++)
+                            for (size_t n = 0; n < 3; n++)
+                                (fi+m)->WT(n).P() = texs[edge_idx[zeroid][m][n]];
+
+                        TexCoordType texsp[4] = { fpp->WT(0).P(), fpp->WT(1).P(), fpp->WT(2).P(), texs[3] };
+                        for (size_t m = 0; m < 2; m++)
+                            for (size_t n = 0; n < 3; n++)
+                                (fip+m)->WT(n).P() = texsp[edge_idx[zeroidp][m][n]];
+                    }
+                    
+                }
+            }
+            
+            // internal
+            else
+            {
                 // add 3 faces, set vertices
                 FaceIterator fi = vcg::tri::Allocator<MeshType>::AddFaces(mesh, 3);
                 for (size_t m = 0; m < 3; m++)
@@ -63,45 +161,21 @@ public:
                 
                 // reset fp
                 fp = &mesh.face[idx];
-                
-                std::cout << "DEBUG: 4"  << std::endl;
 
                 // set texcoord
                 if (fp->HasWedgeTexCoord())
                 {
-                    std::cout << "DEBUG: 5"  << std::endl;
-                 
-                    CoordType bary = inters[i].bary;
-                    std::cout << "DEBUG: 5.1"  << std::endl;
-
-                    TexCoordType texs[4] = {};
-                    for (size_t m = 0; m < 3; m++)
-                    {
-                        typename MeshType::FaceType::TexCoordType t = fp->WT(m);
-                        std::cout << fp->WT(m).P()[0] << std::endl;
-                        texs[m] = fp->WT(m).P();
-                    }
-                    
-                    std::cout << "DEBUG: 5.2"  << std::endl;
+                    TexCoordType texs[4] = { fp->WT(0).P(), fp->WT(1).P(), fp->WT(2).P() };
                     texs[3] = bary[0]*texs[0] + bary[1]*texs[1] + bary[2]*texs[2];
-                    std::cout << "DEBUG: 5.3"  << std::endl;
-                     
+                        
                     for (size_t m = 0; m < 3; m++)
                         for (size_t n = 0; n < 3; n++)
                             (fi+m)->WT(n).P() = texs[new_idx[m][n]];
                 }
-
-                std::cout << "DEBUG: 6"  << std::endl;
-
-                std::cout << "DEBUG: 7"  << std::endl;
-
-                count++;
             }
-            
-            else
-            {
-                std::cout << "Failed! Same face...\n";
-            }
+
+            // how many vertices added
+            count++;
         }
 
         // update mesh
@@ -110,11 +184,8 @@ public:
         mesh.UpdateDataStructures();
         vcg::tri::Allocator<MeshType>::CompactEveryVector(mesh);
 
-
         // update bvh
         bvh.BuildTree(mesh);
-
-        std::cout << "DEBUG: 9"  << std::endl;
 
         return count;
     }
