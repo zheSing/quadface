@@ -124,6 +124,9 @@ int feature_erode_dilate=4;
 
 //MeshPrepocess<FieldTriMesh> MP(tri_mesh);
 
+u_int tID;
+cv::Mat texture;
+
 enum gui_mode{ None, Vertex, Edge } uimode, uimode_;
 
 typedef Intersection<ScalarType> InterType;
@@ -131,8 +134,6 @@ typedef Ray<ScalarType> RayType;
 
 BVHT<FieldTriMesh> bvh_tree;
 HistoryQueue<InterType> vertices_added;
-cv::Mat texture;
-u_int tID;
 
 void InitSharp()
 {
@@ -204,11 +205,20 @@ void TW_CALL SelectFeatures(void*)
     uimode_ = Edge;
 }
 
-void SaveFeatures()
+void TW_CALL SaveFeatures(void*)
 {
     size_t indexExt=pathM.find_last_of(".");       
-    std::string projM = pathM.substr(0,indexExt);
-    tri_mesh.SaveSharpFeatures(projM+".sharp");
+    std::string projM = pathM.substr(0,indexExt) + ".sharp";
+    tri_mesh.SaveSharpFeatures(projM);
+    std::cout<<"Saving Sharp TO:" << projM.c_str() << std::endl;
+}
+
+void TW_CALL SaveMesh(void*)
+{
+    size_t indexExt=pathM.find_last_of(".");       
+    std::string projM = pathM.substr(0,indexExt) + "_ref.obj";
+    tri_mesh.SaveTriMesh(projM);
+    std::cout<<"Saving Mesh TO:" << projM.c_str() << std::endl;
 }
 
 void DoAutoRemesh()
@@ -347,6 +357,8 @@ void InitFieldBar(QWidget *w)
 
         TwAddButton(barQuad, "AddVertices", AddVertices, 0, "label='AddVertices'");
         TwAddButton(barQuad, "SelectFeatures", SelectFeatures, 0, "label='SelectFeatures'");
+        TwAddButton(barQuad, "SaveFeatures", SaveFeatures, 0, "label='SaveFeatures'");
+        TwAddButton(barQuad, "SaveMesh", SaveMesh, 0, "label='SaveMesh'");
 
         // TwAddVarRW(barQuad,"sharp_feature_thr",TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
         // TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &tri_mesh.LimitConcave," label='Limit Concave'");
@@ -434,6 +446,12 @@ GLWidget::GLWidget(QWidget *parent)
     {
         drawfield=true;
     }
+    for (auto &f: tri_mesh.face)
+    {
+        f.C() = FieldTriMesh::FaceType::ColorType::White;
+    }
+    
+
     std::cout<<"Loaded "<<tri_mesh.face.size()<<" faces "<<std::endl;
     std::cout<<"Loaded "<<tri_mesh.vert.size()<<" vertices "<<std::endl;
 
@@ -445,6 +463,7 @@ GLWidget::GLWidget(QWidget *parent)
     glWrap.m=&tri_mesh;
 
     tri_mesh.UpdateDataStructures();
+    tri_mesh.InitEdgeType();
 
     if (has_texture)
     {
@@ -592,7 +611,6 @@ void GLWidget::paintGL ()
         {
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, tID);
-            glDisable(GL_BLEND);
         }
         glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMPerWedge);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
@@ -715,8 +733,21 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
                 if (bvh_tree.Intersect(ray, inter))
                 {
                     std::cout << "Intersection happended!\n";
-                    vertices_added.Insert(inter);
+                    if (ExtraVertexProcess<MeshType>::OnEdgeOrInternal(tri_mesh, inter) < 2)
+                        vertices_added.Insert(inter);
                 }
+            }
+
+            // edge select detection
+            else
+            {
+                InterType inter;
+                if (bvh_tree.Intersect(ray, inter) && ExtraVertexProcess<MeshType>::SelectFeatureEdge(tri_mesh, inter))
+                {
+
+                }
+                else 
+                    std::cout << "Didn't select any edge!\n";
             }
         }
     }

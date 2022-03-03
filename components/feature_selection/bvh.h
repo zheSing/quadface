@@ -86,25 +86,24 @@ private:
         }
     }
 
-    bool FindRecur(BVHN* node, FacePointer fp, PointType c, BVHN**& ret)
-    {
-        if (node == nullptr)
-            return false;
-
-        if (node->bbox.IsIn(c))
-        {
-            if (node->obj == fp)
-            {
-                ret = &node;
-                return true;
-            }
-            if (FindRecur(node->left, fp, c, ret))
-                return true;
-            if (FindRecur(node->right, fp, c, ret))
-                return true;
-        }
-        return false;
-    }
+    // bool FindRecur(BVHN* node, FacePointer fp, PointType c, BVHN**& ret)
+    // {
+    //     if (node == nullptr)
+    //         return false;
+    //     if (node->bbox.IsIn(c))
+    //     {
+    //         if (node->obj == fp)
+    //         {
+    //             ret = &node;
+    //             return true;
+    //         }
+    //         if (FindRecur(node->left, fp, c, ret))
+    //             return true;
+    //         if (FindRecur(node->right, fp, c, ret))
+    //             return true;
+    //     }
+    //     return false;
+    // }
 
     bool Intersect(const BoxType& bbox, const RayType& ray)
     {

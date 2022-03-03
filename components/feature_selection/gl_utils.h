@@ -71,7 +71,11 @@ void GLDrawAddedVertices(const std::vector<Intersection<ScalarType>>& interList)
 
     for (auto v: interList)
     {
-        vcg::glColor(vcg::Color4b(0,255,0,255));
+        if (v.edge == -1)
+            vcg::glColor(vcg::Color4b(0,255,0,255));
+        else
+            vcg::glColor(vcg::Color4b(255,255,0,255));
+
         vcg::glVertex(v.pos);
     }
     

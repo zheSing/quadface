@@ -16,7 +16,9 @@ public:
     typedef typename MeshType::FaceIterator FaceIterator;
     typedef typename MeshType::VertexPointer VertexPointer;
     typedef typename MeshType::VertexIterator VertexIterator;
-    typedef std::vector<Intersection<ScalarType>> InterListType;
+
+    typedef Intersection<ScalarType> InterType;
+    typedef std::vector<InterType> InterListType;
     typedef vcg::Point3<ScalarType> CoordType;
     typedef vcg::Point2<ScalarType> TexCoordType;
 
@@ -28,6 +30,69 @@ private:
     }
 
 public:
+
+    static size_t OnEdgeOrInternal(MeshType& mesh, InterType& inter)
+    {
+        // judge on edge / on vertex / internal
+        const double EPSILON = 0.1;
+        size_t zeroc = 0, zeroid = 0;
+        for (size_t i = 0; i < 3; i++)
+        {
+            if (inter.bary[i] < EPSILON)
+            {
+                zeroid = i;
+                zeroc++;
+            }
+        }
+
+        // on edge
+        if (zeroc == 1)
+        {
+            inter.edge = (zeroid + 1) % 3;
+            // reset bary
+            CoordType& bary = inter.bary;
+            bary[zeroid] = 0;
+            ScalarType sum = bary[0] + bary[1] + bary[2];
+
+            for (size_t m = 0; m < 3; m++)
+                bary[m] /= sum;
+
+            FacePointer fp = &mesh.face[inter.idx];
+            inter.pos = fp->P(0)*bary[0] + fp->P(1)*bary[1] + fp->P(2)*bary[2];
+        }
+
+        return zeroc;
+    }
+
+    static bool SelectFeatureEdge(MeshType& mesh, InterType& inter)
+    {
+        FacePointer fp = &mesh.face[inter.idx];
+        if (fp->IsD())
+            return false;
+
+        // judge if close to edge
+        size_t zeroc = OnEdgeOrInternal(mesh, inter);
+
+        if (zeroc != 1)
+            return false;
+
+        size_t edge = inter.edge;
+        size_t edgep = fp->FFi(edge);
+        FacePointer fpp = fp->FFp(edge);
+
+        if (fp->IsFaceEdgeS(edge))
+        {
+            fp->ClearFaceEdgeS(edge);
+            fpp->ClearFaceEdgeS(edgep);
+        }
+        else
+        {
+            fp->SetFaceEdgeS(edge);
+            fpp->SetFaceEdgeS(edgep);
+        }
+
+        return true;
+    }
 
     static size_t AddExtraVertex(MeshType& mesh, BVHT<MeshType>& bvh, const InterListType& inters)
     {   
@@ -180,9 +245,8 @@ public:
 
         // update mesh
         for (auto idx: fp_set)
-            mesh.face[idx].SetD();
+            vcg::tri::Allocator<MeshType>::DeleteFace(mesh, mesh.face[idx]);
         mesh.UpdateDataStructures();
-        vcg::tri::Allocator<MeshType>::CompactEveryVector(mesh);
 
         // update bvh
         bvh.BuildTree(mesh);
