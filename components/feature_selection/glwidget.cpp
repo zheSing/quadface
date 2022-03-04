@@ -180,7 +180,7 @@ void TW_CALL VertexRedo(void*)
 void TW_CALL VertexConfirm(void*)
 {
     uimode_ = None;
-    ExtraVertexProcess<MeshType>::AddExtraVertex(tri_mesh, bvh_tree, vertices_added.HistoryList());
+    ExtraVertexProcess<FieldTriMesh>::AddExtraVertex(tri_mesh, bvh_tree, vertices_added.HistoryList());
     vertices_added.Clear();
 }
 
@@ -334,6 +334,65 @@ void TW_CALL ErodeDilateFeatureStep(void *)
     //MP.ErodeDilate(feature_erode_dilate);
 }
 
+void TW_CALL InitTexFeature(void *)
+{
+    TextureProcess<FieldTriMesh>::TexCoordFeature(tri_mesh);
+}
+
+void TW_CALL InitBorderFeature(void *)
+{
+    std::vector<FieldTriFace>& face = tri_mesh.face;
+    for (size_t i = 0; i < face.size(); i++)
+    {
+        for (size_t j = 0; j < 3; j++)
+        {
+            if (face[i].IsD()) continue;
+            if (vcg::face::IsBorder(face[i],j))
+            {
+                face[i].SetFaceEdgeS(j);
+                face[i].FKind[j]=ETConvex;
+            }
+            else if (!vcg::face::IsManifold(face[i],j))
+            {
+                face[i].SetFaceEdgeS(j);
+                face[i].FKind[j]=ETConvex;
+            }
+        }
+    }
+}
+
+void TW_CALL InitThrFeature(void *)
+{
+    // backup
+    std::vector<FieldTriFace>& face = tri_mesh.face;
+    std::vector<int> back(face.size(), 0);
+    for (size_t i = 0; i < face.size(); i++)
+    {
+        if (face[i].IsD()) continue;
+        for (size_t j = 0; j < 3; j++)
+        {
+            if (face[i].IsFaceEdgeS(j))
+                back[i] |= (1<<j); 
+        }
+    }
+    
+    if (sharp_feature_thr > 0)
+    {
+        vcg::tri::UpdateFlags<FieldTriMesh>::FaceEdgeSelCrease(tri_mesh, vcg::math::ToRad(sharp_feature_thr));
+    }
+
+    for (size_t i = 0; i < face.size(); i++)
+    {
+        if (face[i].IsD()) continue;
+        for (size_t j = 0; j < 3; j++)
+        {
+            if (back[i] & (1<<j))
+                face[i].SetFaceEdgeS(j);; 
+        }
+    }
+}
+
+
 void SetFieldBarSizePosition(QWidget *w)
 {
     int params[2];
@@ -353,14 +412,19 @@ void InitFieldBar(QWidget *w)
 
         barQuad = TwNewBar("QuadWild");
 
-        SetFieldBarSizePosition(w);
+        // SetFieldBarSizePosition(w);
 
         TwAddButton(barQuad, "AddVertices", AddVertices, 0, "label='AddVertices'");
         TwAddButton(barQuad, "SelectFeatures", SelectFeatures, 0, "label='SelectFeatures'");
-        TwAddButton(barQuad, "SaveFeatures", SaveFeatures, 0, "label='SaveFeatures'");
-        TwAddButton(barQuad, "SaveMesh", SaveMesh, 0, "label='SaveMesh'");
 
-        // TwAddVarRW(barQuad,"sharp_feature_thr",TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
+        TwAddSeparator(barQuad, "sep1", "label=''");
+        TwAddButton(barQuad, "InitTexFeature", InitTexFeature, 0, "label='InitTexFeature'");
+        TwAddButton(barQuad, "InitBorderFeature", InitBorderFeature, 0, "label='InitBorderFeature'");
+        TwAddVarRW(barQuad, "sharp_feature_thr", TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
+        TwAddButton(barQuad, "InitThrFeature", InitThrFeature, 0, "label='InitThrFeature'");
+
+        TwAddSeparator(barQuad, "sep2", "label=''");
+
         // TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &tri_mesh.LimitConcave," label='Limit Concave'");
         //TwAddVarRW(barQuad,"LimitConcave",TW_TYPE_DOUBLE, &MP.LimitConcave," label='Limit Concave'");
 
@@ -368,9 +432,14 @@ void InitFieldBar(QWidget *w)
 
         // TwAddButton(barQuad,"SetSharp",InitSharpFeatures,0,"label='InitSharp'");
 
-        // TwAddVarRW(barQuad,"ErodeDilSteps",TW_TYPE_INT32,&feature_erode_dilate,"label='ErodeDilateSteps'");
+        TwAddVarRW(barQuad,"ErodeDilSteps",TW_TYPE_INT32,&feature_erode_dilate,"label='ErodeDilateSteps'");
 
-        // TwAddButton(barQuad,"Erode Dilate",ErodeDilateFeatureStep,0,"label='ErodeDilateSharp'");
+        TwAddButton(barQuad,"Erode Dilate",ErodeDilateFeatureStep,0,"label='ErodeDilateSharp'");
+
+        TwAddSeparator(barQuad, "sep3", "label=''");
+
+        TwAddButton(barQuad, "SaveFeatures", SaveFeatures, 0, "label='SaveFeatures'");
+        TwAddButton(barQuad, "SaveMesh", SaveMesh, 0, "label='SaveMesh'");
 
         // TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
 
@@ -501,6 +570,7 @@ GLWidget::GLWidget(QWidget *parent)
         //bool HasRead=MP.LoadSharpFeaturesFL(pathS);
         assert(HasRead);
     }
+    tri_mesh.InitEdgeType();
     
 //    if ((do_batch)&&(!has_features))
 //    {
@@ -733,7 +803,7 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
                 if (bvh_tree.Intersect(ray, inter))
                 {
                     std::cout << "Intersection happended!\n";
-                    if (ExtraVertexProcess<MeshType>::OnEdgeOrInternal(tri_mesh, inter) < 2)
+                    if (ExtraVertexProcess<FieldTriMesh>::OnEdgeOrInternal(tri_mesh, inter) < 2)
                         vertices_added.Insert(inter);
                 }
             }
@@ -742,7 +812,7 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
             else
             {
                 InterType inter;
-                if (bvh_tree.Intersect(ray, inter) && ExtraVertexProcess<MeshType>::SelectFeatureEdge(tri_mesh, inter))
+                if (bvh_tree.Intersect(ray, inter) && ExtraVertexProcess<FieldTriMesh>::SelectFeatureEdge(tri_mesh, inter))
                 {
 
                 }

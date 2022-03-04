@@ -725,7 +725,7 @@ public:
         vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
 
         // mark vertices that have different uv
-        TextureProcess::TexCoordFeature(mesh);
+        TextureProcess<MeshType>::TexCoordFeature(mesh);
 
         // has tex or not 
         if (!BPar.has_texture)

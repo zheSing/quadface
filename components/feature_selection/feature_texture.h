@@ -4,8 +4,9 @@
 #include "triangle_mesh_type.h"
 #include <opencv2/opencv.hpp>
 
-typedef FieldTriMesh MeshType;
+// typedef FieldTriMesh MeshType;
 
+template<class MeshType>
 class TextureProcess
 {
     typedef typename MeshType::ScalarType ScalarType;
@@ -413,6 +414,7 @@ public:
         for (size_t i = 0; i < mesh.face.size(); i++)
         {
             FacePointer fp = &mesh.face[i];
+            if (fp->IsD())  continue;
             for (size_t j = 0; j < 3; j++)
             {
                 if (!fp->V(j)->IsV())
@@ -420,7 +422,7 @@ public:
                     fp->V(j)->SetV();
                     vcg::face::Pos<FaceType> pos(fp, j);
                     vcg::face::Pos<FaceType> startPos = pos;
-                    TexCoordType::PointType vt = fp->WT(j).P();
+                    typename TexCoordType::PointType vt = fp->WT(j).P();
                     do
                     {
                         size_t vidx=WhichIndex(*pos.F(),pos.V());

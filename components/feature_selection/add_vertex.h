@@ -247,6 +247,7 @@ public:
         for (auto idx: fp_set)
             vcg::tri::Allocator<MeshType>::DeleteFace(mesh, mesh.face[idx]);
         mesh.UpdateDataStructures();
+        mesh.InitEdgeType();
 
         // update bvh
         bvh.BuildTree(mesh);
