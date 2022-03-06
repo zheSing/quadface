@@ -72,6 +72,9 @@ std::string pathM="";
 std::string pathS="";
 std::string pathT="";
 
+std::string projM="";
+std::string projS="";
+
 vcg::Trackball track;//the active manipulator
 
 bool drawfield=false;
@@ -207,16 +210,14 @@ void TW_CALL SelectFeatures(void*)
 
 void TW_CALL SaveFeatures(void*)
 {
-    size_t indexExt=pathM.find_last_of(".");       
-    std::string projM = pathM.substr(0,indexExt) + ".sharp";
-    tri_mesh.SaveSharpFeatures(projM);
-    std::cout<<"Saving Sharp TO:" << projM.c_str() << std::endl;
+    tri_mesh.SaveSharpFeatures(projS);
+    std::cout<<"Saving Sharp TO:" << projS.c_str() << std::endl;
 }
 
 void TW_CALL SaveMesh(void*)
 {
-    size_t indexExt=pathM.find_last_of(".");       
-    std::string projM = pathM.substr(0,indexExt) + "_ref.obj";
+    // size_t indexExt=pathM.find_last_of(".");       
+    // std::string projM = pathM.substr(0,indexExt) + "_ref.obj";
     tri_mesh.SaveTriMesh(projM);
     std::cout<<"Saving Mesh TO:" << projM.c_str() << std::endl;
 }
@@ -438,7 +439,9 @@ void InitFieldBar(QWidget *w)
 
         TwAddSeparator(barQuad, "sep3", "label=''");
 
+        TwAddVarRW(barQuad, "SharpName", TW_TYPE_STDSTRING, &projS, "label='SharpName'");
         TwAddButton(barQuad, "SaveFeatures", SaveFeatures, 0, "label='SaveFeatures'");
+        TwAddVarRW(barQuad, "MeshName", TW_TYPE_STDSTRING, &projM, "label='MeshName'");
         TwAddButton(barQuad, "SaveMesh", SaveMesh, 0, "label='SaveMesh'");
 
         // TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
@@ -520,6 +523,9 @@ GLWidget::GLWidget(QWidget *parent)
         f.C() = FieldTriMesh::FaceType::ColorType::White;
     }
     
+    size_t indexExt=pathM.find_last_of(".");       
+    projM = pathM.substr(0, indexExt) + "_ref.obj";
+    projS = pathM.substr(0, indexExt) + "_ref.sharp";
 
     std::cout<<"Loaded "<<tri_mesh.face.size()<<" faces "<<std::endl;
     std::cout<<"Loaded "<<tri_mesh.vert.size()<<" vertices "<<std::endl;
