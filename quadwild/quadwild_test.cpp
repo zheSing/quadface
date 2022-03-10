@@ -341,11 +341,9 @@ int main(int argc, char *argv[])
     loadFeatureCorners(featureCFilename);
 
     OrientIfNeeded(to_quad_trimesh,trimeshPartitions,trimeshCorners,trimeshFeatures,trimeshFeaturesC);
-    std::cout << "After import1: " << to_quad_trimesh.face[100].WT(2).P()[0] << std::endl;
 
     //COMPUTE QUADRANGULATION
     QuadRetopology::internal::updateAllMeshAttributes(to_quad_trimesh);
-    std::cout << "After import2: " << to_quad_trimesh.face[100].WT(2).P()[0] << std::endl;
 
     QuadRetopology::Parameters parameters;
     float scaleFactor;

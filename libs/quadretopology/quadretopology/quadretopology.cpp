@@ -956,7 +956,6 @@ void quadrangulate(
         // QuadRetopology::internal::computeQuadrangulation(chartV, chartF, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF);
         QuadRetopology::internal::computeQuadrangulation(chartV, chartF, chartUV, patchV, patchF, chartSideVertices, chartSideLength, chartSideSubdivision, patchSides, uvMapV, uvMapF, quadrangulationV, quadrangulationF, quadrangulationUV);
 
-        printf("DEBUG: 5\n");
 
 #ifdef QUADRETOPOLOGY_DEBUG_SAVE_MESHES
         Eigen::MatrixXd uvMesh(uvMapV.rows(), 3);
@@ -976,7 +975,6 @@ void quadrangulate(
         QuadRetopology::internal::eigenToVCG(quadrangulationV, quadrangulationF, quadrangulatedChartMesh, 4);
         QuadRetopology::internal::eigenUVToVCG(quadrangulationV, quadrangulationF, quadrangulationUV, quadrangulatedChartMesh, 4);
 
-        printf("DEBUG: 6\n");
 
 #ifdef QUADRETOPOLOGY_DEBUG_SAVE_MESHES
         igl::writeOBJ(std::string("results/") + std::to_string(cId) + std::string("_quadrangulation.obj"), quadrangulationV, quadrangulationF);
@@ -992,7 +990,6 @@ void quadrangulate(
             vcg::PolygonalAlgorithm<PolyMeshType>::LaplacianReproject(quadrangulatedChartMesh, chartSmoothingIterations, 0.5, true);
         }
 
-        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
         std::vector<int> currentVertexMap(quadrangulatedChartMesh.vert.size(), -1);
 
         //Map subsides on the vertices of the current mesh (create if necessary)
@@ -1080,9 +1077,6 @@ void quadrangulate(
             assert(currentPatchSideVertex+1 == patchSide.size());
         }
 
-        printf("DEBUG: 7\n");
-        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
-
         //Internal vertices
         for (size_t i = 0; i < quadrangulatedChartMesh.vert.size(); i++) {
             if (currentVertexMap[i] == -1) {
@@ -1095,26 +1089,15 @@ void quadrangulate(
             }
         }
 
-        printf("DEBUG: 8\n");
-        
-        std::cout << "VN: " << quadrangulatedChartMesh.face[2].VN() << std::endl;
-
         //Set faces
         for (size_t i = 0; i < quadrangulatedChartMesh.face.size(); i++) {
-            printf("size0: %d\n", quadrangulatedChartMesh.face[i].VN());
             assert(quadrangulatedChartMesh.face[i].VN() == 4);
 
             size_t newFaceId = quadrangulation.face.size();
 
-            printf("size: %d\n", quadrangulatedChartMesh.face[i].VN());
-
             vcg::tri::Allocator<PolyMeshType>::AddFaces(quadrangulation, 1);
 
-            printf("size1: %d\n", quadrangulatedChartMesh.face[i].VN());
-
             quadrangulation.face[newFaceId].Alloc(quadrangulatedChartMesh.face[i].VN());
-
-            printf("size2: %d\n", quadrangulatedChartMesh.face[i].VN());
             
             for (int j = 0; j < quadrangulatedChartMesh.face[i].VN(); j++) {
                 int vId = currentVertexMap[vcg::tri::Index(quadrangulatedChartMesh, quadrangulatedChartMesh.face[i].V(j))];
@@ -1124,18 +1107,12 @@ void quadrangulate(
 
                 // for uv 
                 quadrangulation.face[newFaceId].WT(j).P() = quadrangulatedChartMesh.face[i].WT(j).P();
-
-                std::cout << quadrangulatedChartMesh.face[i].WT(j).P()[0] << ", " << quadrangulatedChartMesh.face[i].WT(j).P()[1] << std::endl;
             }
 
             quadrangulationFaceLabel.push_back(chart.label);
             quadrangulationPartitions[chart.label].push_back(newFaceId);
-
-            printf("DEBUG: 9\n");
             
         }
-        
-
 
         //Fill corners vertices
         for (size_t i = 0; i < chartSides.size(); i++) {
