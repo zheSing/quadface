@@ -82,7 +82,7 @@ class VertSplitter{
         (void)srcMesh;
         (void)dstMesh;
         v.P() = f.cP(whichWedge);
-        v.T() = f.cWT(whichWedge);
+        v.T().P() = f.cWT(whichWedge).P();
     }
 
     static bool CompareVertex(const MeshType & m,
@@ -90,7 +90,7 @@ class VertSplitter{
                               const VertexType & vB)
     {
         (void)m;
-        return (vA.cT() == vB.cT());
+        return (vA.cT().P() == vB.cT().P());
     }
 
 public:
@@ -405,6 +405,7 @@ public:
 
     void AddConnections(const std::vector<std::vector<size_t> > &VNeigh)
     {
+        // init node connection
         for (size_t i=0;i<VNeigh.size();i++)
             for (size_t j=0;j<VNeigh[i].size();j++)
             {
@@ -574,7 +575,7 @@ private:
                 size_t IndexV1=vcg::tri::Index(mesh,mesh.face[i].V1(j));
                 BorderEdges.insert(std::pair<size_t,size_t>(std::min(IndexV0,IndexV1),std::max(IndexV0,IndexV1)));
             }
-
+        // remove all border edges on VNeigh
         for (size_t i=0;i<VNeigh.size();i++)
         {
             size_t IndexV0=i;
@@ -592,6 +593,7 @@ private:
 
     void PropagateNeigh(std::vector<std::vector<size_t> > &VNeigh)
     {
+        // propagate to 2-neigbour
         std::vector<std::vector<size_t> > newNeigh;
 
         for (size_t i=0;i<VNeigh.size();i++)
@@ -1540,7 +1542,7 @@ void SplitAdjacentSingularities(MeshType &mesh)
     }
 
     // ToBeSplitted: map a coordinate pair need splitted to the mid point after splitted.
-    // Creases: content all coordinate pair that is a sharp edge.
+    // Creases: content all coordinate pair to preserve sharp edge.
     std::map<CoordPair,CoordType> ToBeSplitted;
     std::vector<CoordPair> Creases;
     for (size_t i=0;i<mesh.face.size();i++)
@@ -1599,20 +1601,21 @@ void SplitAdjacentSingularities(MeshType &mesh)
     //    return done;
 }
 
-template <class MeshType>
+template <class MeshType=TraceMesh>
 void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
 {
-
-
     mesh.SelectSharpFeatures();
 
-
+    // Condition that a edge need splitted: one of vertices is a singularity,
+    //                                      or it's a single sharp edge not adjacent by others 
+    std::cout << "Num of vertices: " << mesh.vert.size() << std::endl;
     SplitAdjacentSingularities(mesh);
 
 
     //split along marked sharp features
     if (DebugMsg)
         std::cout<<"splitting along sharp features"<<std::endl;
+    // traverse vertices, split those vertex that is adj by at list a sharp
     VertSplitter<MeshType>::SplitAlongEdgeSel(mesh);
     if (DebugMsg)
         std::cout<<"done"<<std::endl;
@@ -1635,7 +1638,7 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
     if (Test1>0)
     {
         std::cout<<"WARNING NON MANIFOLD VERTEX SPLIT! "<<std::endl;
-        vcg::tri::Clean<MeshType>::SplitNonManifoldVertex(mesh,std::numeric_limits<typename MeshType::ScalarType>::epsilon()*100);
+        // vcg::tri::Clean<MeshType>::SplitNonManifoldVertex(mesh,std::numeric_limits<typename MeshType::ScalarType>::epsilon()*100);
     }
     if (DebugMsg)
         std::cout<<"splitted"<<std::endl;
