@@ -47,6 +47,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "feature_texture.h"
 #include "history_queue.h"
 #include "add_vertex.h"
+#include "symmetry.h"
 #include "triangle_mesh_type.h"
 // #include "poly_mesh_type.h"
 #include <wrap/qt/trackball.h>
@@ -130,7 +131,7 @@ int feature_erode_dilate=4;
 u_int tID;
 cv::Mat texture;
 
-enum gui_mode{ None, Vertex, Edge } uimode, uimode_;
+enum gui_mode{ None, Vertex, Edge, Symm } uimode, uimode_;
 
 typedef Intersection<ScalarType> InterType;
 typedef Ray<ScalarType> RayType;
@@ -207,6 +208,12 @@ void TW_CALL SelectFeatures(void*)
 {
     uimode_ = Edge;
 }
+
+void TW_CALL SelectSymmetry(void *)
+{
+    uimode_ = Symm;
+}
+
 
 void TW_CALL SaveFeatures(void*)
 {
@@ -362,6 +369,13 @@ void TW_CALL InitBorderFeature(void *)
     }
 }
 
+void TW_CALL SymmConfirm(void *)
+{
+    // vcg::Point4<ScalarType> plane;
+    // SymmetryManager<FieldTriMesh>::FindSymmetryAxis(tri_mesh, plane);
+    uimode_ = None;
+}
+
 void TW_CALL InitThrFeature(void *)
 {
     // backup
@@ -417,6 +431,7 @@ void InitFieldBar(QWidget *w)
 
         TwAddButton(barQuad, "AddVertices", AddVertices, 0, "label='AddVertices'");
         TwAddButton(barQuad, "SelectFeatures", SelectFeatures, 0, "label='SelectFeatures'");
+        TwAddButton(barQuad, "SelectSymmetry", SelectSymmetry, 0, "label='SelectSymmetry'");
 
         TwAddSeparator(barQuad, "sep1", "label=''");
         TwAddButton(barQuad, "InitTexFeature", InitTexFeature, 0, "label='InitTexFeature'");
@@ -484,17 +499,24 @@ void InitFieldBar(QWidget *w)
     {
         TwDeleteAllBars();
         barQuad = TwNewBar("Press right mouse button to add vertex...");
-        TwAddButton(barQuad, "undo", VertexUndo, 0, "laberl='VertexUndo'");
-        TwAddButton(barQuad, "redo", VertexRedo, 0, "laberl='VertexRedo'");
-        TwAddButton(barQuad, "cancel", VertexCancel, 0, "laberl='VertexCancel'");
-        TwAddButton(barQuad, "confirm", VertexConfirm, 0, "laberl='VertexConfirm'");
+        TwAddButton(barQuad, "undo", VertexUndo, 0, "label='VertexUndo'");
+        TwAddButton(barQuad, "redo", VertexRedo, 0, "label='VertexRedo'");
+        TwAddButton(barQuad, "cancel", VertexCancel, 0, "label='VertexCancel'");
+        TwAddButton(barQuad, "confirm", VertexConfirm, 0, "label='VertexConfirm'");
     }
 
-    else 
+    else if (uimode == Edge)
     {
         TwDeleteAllBars();
         barQuad = TwNewBar("Press right mouse to select/unselect sharp edge...");
-        TwAddButton(barQuad, "confirm", EdgeConfirm, 0, "laberl='EdgeConfirm'");
+        TwAddButton(barQuad, "confirm", EdgeConfirm, 0, "label='EdgeConfirm'");
+    }
+
+    else if (uimode == Symm)
+    {
+        TwDeleteAllBars();
+        barQuad = TwNewBar("Symmetry Edge Selection");
+        TwAddButton(barQuad, "SymmConfirm", SymmConfirm, 0, "label='Generate'");
     }
 }
 
@@ -539,6 +561,8 @@ GLWidget::GLWidget(QWidget *parent)
 
     tri_mesh.UpdateDataStructures();
     tri_mesh.InitEdgeType();
+
+    SymmetryManager<FieldTriMesh>::SetUpForSymmetry(tri_mesh);
 
     if (has_texture)
     {
@@ -815,13 +839,21 @@ void GLWidget::mousePressEvent (QMouseEvent * e)
             }
 
             // edge select detection
-            else
+            else if (uimode == Symm)
             {
                 InterType inter;
-                if (bvh_tree.Intersect(ray, inter) && ExtraVertexProcess<FieldTriMesh>::SelectFeatureEdge(tri_mesh, inter))
+                if (bvh_tree.Intersect(ray, inter))
                 {
-
+                    size_t cnt = SymmetryManager<FieldTriMesh>::TraceAxisByDirection(tri_mesh, inter);
+                    std::cout << "Marked " << cnt << " symmetry axis.\n";
                 }
+                else 
+                    std::cout << "Didn't select any edge!\n";
+            }
+            else if (uimode == Edge)
+            {
+                InterType inter;
+                if (bvh_tree.Intersect(ray, inter) && ExtraVertexProcess<FieldTriMesh>::SelectFeatureEdge(tri_mesh, inter));
                 else 
                     std::cout << "Didn't select any edge!\n";
             }

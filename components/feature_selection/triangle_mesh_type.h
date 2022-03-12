@@ -120,6 +120,7 @@ class FieldTriMesh: public vcg::tri::TriMesh< std::vector<FieldTriVertex>,
 public:
 
     ScalarType LimitConcave;
+    int symmbit[3];
 
     void InitEdgeType()
     {

@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <wrap/gl/trimesh.h>
 #include "ray_intersection.h"
+#include "symmetry.h"
 
 template <class MeshType>
 void GLDrawSharpEdges(MeshType &mesh)
@@ -57,6 +58,21 @@ void GLDrawSharpEdges(MeshType &mesh)
         }
     glEnd();
     glPopAttrib();
+    
+    std::vector<CoordType> quad;
+    if (SymmetryManager<MeshType>::GetPlaneQuad(mesh, quad))
+    {
+        glPushAttrib(GL_ALL_ATTRIB_BITS);
+        glDisable(GL_LIGHTING);
+        glDepthRange(0,0.9999);
+        glBegin(GL_QUADS);
+        vcg::glColor(vcg::Color4b(125, 50, 199, 128));
+        for (size_t i = 0; i < 4; i++)
+            vcg::glVertex(quad[i]);
+        glEnd();
+        glPopAttrib();
+    }
+
 }
 
 template<typename ScalarType>
