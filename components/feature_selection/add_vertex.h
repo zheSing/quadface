@@ -17,7 +17,7 @@ public:
     typedef typename MeshType::VertexPointer VertexPointer;
     typedef typename MeshType::VertexIterator VertexIterator;
 
-    typedef Intersection<ScalarType> InterType;
+    typedef MyIntersection<ScalarType> InterType;
     typedef std::vector<InterType> InterListType;
     typedef vcg::Point3<ScalarType> CoordType;
     typedef vcg::Point2<ScalarType> TexCoordType;

@@ -2,7 +2,6 @@
 #define SYMMETRY_H
 
 #include "ray_intersection.h"
-#include "triangle_mesh_type.h"
 #include <Eigen/Core>
 #include <Eigen/SVD>
 #include <vector>
@@ -25,7 +24,7 @@ private:
 
     typedef std::pair<CoordType,CoordType> CoordPair;
     typedef vcg::Point4<ScalarType> PlaneType;
-    typedef Intersection<ScalarType> InterType;
+    typedef MyIntersection<ScalarType> InterType;
     typedef vcg::face::Pos<FaceType> PosType;
 
     static ScalarType CosOfDir(const CoordType& a, const CoordType& b)
@@ -66,26 +65,6 @@ private:
         return zeroc;
     }
 
-    static ScalarType PointToPlane(const CoordType& p, const PlaneType& plane, ScalarType deno=-1)
-    {
-        ScalarType nume = abs(p[0]*plane[0] + p[1]*plane[1] + p[2]*plane[2] + plane[3]);
-        if (deno < 0)
-            deno = sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
-        return nume / deno;
-    }
-
-    static ScalarType AvgOffset(const std::set<CoordPair>& symmAxis, const PlaneType& plane)
-    {
-        ScalarType avg = 0;
-        ScalarType deno = sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
-        for (auto edge: symmAxis)
-        {
-            CoordType mid = (edge.first + edge.second) / 2.;
-            avg += PointToPlane(mid, plane);
-        }
-        return avg / symmAxis.size();
-    }
-
     static int EdgeIndex(FacePointer fp, VertexPointer vp0, VertexPointer vp1)
     {
         for (size_t i = 0; i < 3; i++)
@@ -116,7 +95,38 @@ private:
     }
 
 
-public:
+public:    
+
+    static ScalarType AvgOffset(const std::set<CoordPair>& symmAxis, const PlaneType& plane)
+    {
+        ScalarType avg = 0;
+        ScalarType deno = sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
+        for (auto edge: symmAxis)
+        {
+            CoordType mid = (edge.first + edge.second) / 2.;
+            avg += PointToPlane(mid, plane);
+        }
+        return avg / symmAxis.size();
+    }
+
+    static CoordType SymmetryPoint(const CoordType& p, const PlaneType& plane)
+    {
+        ScalarType nume = p[0]*plane[0] + p[1]*plane[1] + p[2]*plane[2] + plane[3];
+        ScalarType deno = plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2];
+        ScalarType t = -2*nume / deno;
+        
+        CoordType N(plane[0], plane[1], plane[2]);
+        return p + N*t;
+    }
+
+    static ScalarType PointToPlane(const CoordType& p, const PlaneType& plane, ScalarType deno=-1)
+    {
+        ScalarType nume = abs(p[0]*plane[0] + p[1]*plane[1] + p[2]*plane[2] + plane[3]);
+        if (deno < 0)
+            deno = sqrt(plane[0]*plane[0] + plane[1]*plane[1] + plane[2]*plane[2]);
+        return nume / deno;
+    }
+
     static PlaneType PlaneSVD(const std::set<CoordType>& pointSet)
     {
         assert(pointSet.size() > 3);
@@ -380,7 +390,7 @@ public:
                  + TraceAxisByDirection(vp1, dir1, mesh.symmbit);
     }
 
-    static size_t TraceAxisByDirection(VertexPointer vp, CoordType dir, int* symmbit, int smooth=5)
+    static size_t TraceAxisByDirection(VertexPointer vp, CoordType dir, int* symmbit, int smooth=3)
     {
         if (vp->IsB())
             return 0;

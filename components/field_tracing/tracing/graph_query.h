@@ -525,6 +525,8 @@ public:
         assert(TraceN0.size()>1);
         assert(TraceN1.size()>1);
 
+        std::cout << "------ Collide Test ------\n";
+
         //quick rejection test based on vertex indexes
         vcg::tri::UnMarkAll<MeshType>(VFGraph.Mesh());
         std::vector<size_t> SameV;
@@ -542,6 +544,8 @@ public:
             if (vcg::tri::IsMarked(VFGraph.Mesh(),v)){SameV.push_back(IndexV);}
         }
         if (SameV.size()==0)return false;
+
+        std::cout << "- Have shared vertices -\n";
 
         //then check if there is the same geometric edge
         size_t Limit0=TraceN0.size()-1;
@@ -582,6 +586,8 @@ public:
             }
         }
 
+        std::cout << "- Dont have share edges -\n"; 
+        
         //first check if there is the same node (or opposite in M2)
         VFGraph.UnMarkAll();
         if (IsLoopTr0)//in this case mark all
@@ -608,6 +614,8 @@ public:
             size_t NodeN1=TraceN1[i];
             if (VFGraph.IsMarked(NodeN1))return true;
         }
+
+        std::cout << "- Dont collide tangent node -\n";
 
         return (CollideSubSequence(VFGraph,TraceN0,TraceN1,IsLoopTr0,IsLoopTr1,SameV));
     }
@@ -1026,7 +1034,26 @@ public:
         SParam.AvoidBorder=true;
 
         bool Traced=ShortestPath(VFGraph,SParam,Sequence);
-        if (!Traced)return false;
+        if (!Traced)
+        {
+            std::cout << "-----Expande Failed-----\n";
+            std::cout << "Current " << IndexN0 << " has neighbours: ";
+            std::vector<size_t> neighs;
+            VFGraph.GetNodeNeigh(IndexN0, neighs);
+            bool isFound = false, isDirect = false, isActive;
+            for (size_t i = 0; i < neighs.size(); i++)
+            {
+                std::cout << neighs[i] << " ";
+                if (neighs[i] == IndexN1)
+                {
+                    isFound = true;
+                    isDirect = VFGraph.DirectNeigh(IndexN0, i);
+                }
+            }
+            std::cout << "\nTarget " << IndexN1 << " IsNeighbor:" << isFound << ", IsDirect:" << isDirect << ", IsActive:" << VFGraph.IsActive(IndexN1) << std::endl;
+            
+            return false;
+        }
         return true;
     }
 
@@ -1136,8 +1163,14 @@ public:
             size_t IndexN1=Path[(i+1)%Path.size()];
             std::vector<size_t> IndexN;
             bool found=GetSubSequence(VFGraph,IndexN0,IndexN1,IndexN,Drift);
-            if(!found)return false;
-
+            if(!found)
+            {
+                // int twi = VFGraph.GetNodeSymmTwin(IndexN0);
+                // int twi1 = VFGraph.GetNodeSymmTwin(IndexN1);
+                // int istwin = VFGraph.AreTwin(IndexN0, IndexN1);
+                // std::cout << IndexN0 << ":" << twi << ", " << IndexN1 << ":" << twi1 << ", " << istwin << std::endl;
+                return false;
+            }
             assert(IndexN.size()>=2);
             SwapTraceNode.insert(SwapTraceNode.end(),IndexN.begin(),IndexN.end()-1);
         }

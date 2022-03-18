@@ -16,7 +16,7 @@ class BVHT
     typedef typename vcg::Point3<ScalarType> PointType;
 
     typedef  Ray<ScalarType> RayType;
-    typedef  Intersection<ScalarType> InterType;
+    typedef  MyIntersection<ScalarType> InterType;
 
 public:
     BVHT() 

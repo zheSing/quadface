@@ -136,6 +136,7 @@ class MeshFieldSmoother
         //CHANGE BUT NOT REALLY NEEDED
         mesh.UpdateDataStructures();
         mesh.SetFeatureFromTable();
+        mesh.SetSymmetryFromTable();
     }
 
 

@@ -787,6 +787,8 @@ public:
 
         }
         mesh.InitFeatureCoordsTable();
+        mesh.InitSymmetryCoordsTable();
+
 
 //        //THEN UPDATE SHARP FEATURES
 //        if (BPar.UpdateSharp)
@@ -819,12 +821,15 @@ public:
         std::string meshName=projM+std::string("_rem.obj");
         std::string fieldName=projM+std::string("_rem.rosy");
         std::string sharpName=projM+std::string("_rem.sharp");
+        std::string symmName=projM+std::string("_rem.symm");
         std::cout<<"Saving Mesh TO:"<<meshName.c_str()<<std::endl;
         std::cout<<"Saving Field TO:"<<fieldName.c_str()<<std::endl;
         std::cout<<"Saving Sharp TO:"<<sharpName.c_str()<<std::endl;
+        std::cout<<"Saving Symm TO:"<<symmName.c_str()<<std::endl;
         tri_mesh.SaveTriMesh(meshName.c_str());
         tri_mesh.SaveField(fieldName.c_str());
         tri_mesh.SaveSharpFeatures(sharpName.c_str());
+        tri_mesh.SaveSymmetryAxis(symmName.c_str());
     }
 
 };

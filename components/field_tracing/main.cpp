@@ -40,12 +40,14 @@ extern TraceMesh mesh;
 extern std::string pathM;
 extern std::string pathF;
 extern std::string pathS;
+extern std::string pathSymm;
 extern std::string pathOF;
 extern std::string pathProject;
 
 extern bool has_features;
 extern bool has_original_faces;
 extern bool batch_process;
+extern bool has_symmetry;
 
 //extern float BatchSample;
 //extern float BatchDrift;
@@ -132,6 +134,23 @@ int main(int argc, char *argv[])
     {
        has_features=true;
        std::cout<<"Sharp file correct"<<std::endl;
+    }
+
+    pathSymm=pathProject;
+    pathSymm.append(".symm");
+    QString pathSymmQ=QString(pathSymm.c_str());
+    QFileInfo f_infoSymm(pathSymmQ);
+    if (!f_infoSymm.exists())
+    {
+        printf("no symmetry axis \n");
+        has_symmetry=false;
+        fflush(stdout);
+        //exit(0);
+    }
+    else
+    {
+       has_symmetry=true;
+       std::cout<<"Symmetry file correct"<<std::endl;
     }
 
 

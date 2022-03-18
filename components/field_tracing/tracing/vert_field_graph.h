@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #ifndef VERT_FIELD_GRAPH
 #define VERT_FIELD_GRAPH
 
+#include "../../feature_selection/symmetry.h"
 #include <vcg/math/matrix33.h>
 #include <vcg/complex/algorithms/parametrization/tangent_field_operators.h>
 #include <vcg/complex/algorithms/attribute_seam.h>
@@ -215,6 +216,7 @@ class VertexFieldGraph
     typedef typename MeshType::ScalarType ScalarType;
     typedef typename MeshType::FaceType FaceType;
     typedef typename MeshType::VertexType VertexType;
+    typedef typename vcg::Point4<ScalarType> PlaneType;
 
     //the input mesh to trace
     MeshType &mesh;
@@ -225,12 +227,14 @@ class VertexFieldGraph
     size_t TMark;
 
     std::vector<bool> RealBorderVert;
+    std::vector<bool> OriginalBorderVert;
 
     bool DebugMsg;
 
 public:
 
     std::map<EdgeVert,size_t> EdgeBorderDir;
+    PlaneType SymmPlane;
     //std::unordered_map<EdgeVert,size_t,EdgeVertKeyHasher> EdgeBorderDir;
 
     struct NeighInfo
@@ -311,16 +315,16 @@ public:
             assert(Node0<Nodes.size());
             assert(Node1<Nodes.size());
             //check the one that have the most outcoming directions
-            if (Nodes[Node0].NonTwinNeigh()<Nodes[Node1].NonTwinNeigh())
-            {
+            // if (Nodes[Node0].NonTwinNeigh()<Nodes[Node1].NonTwinNeigh())
+            // {
                 Nodes[Node0].Neigh.push_back(NeighInfo(Node1,0,DELTA));
                 Nodes[Node0].Neigh.back().twin=true;
-            }
-            else
-            {
+            // }
+            // else
+            // {
                 Nodes[Node1].Neigh.push_back(NeighInfo(Node0,0,DELTA));
                 Nodes[Node1].Neigh.back().twin=true;
-            }
+            // }
         }
     }
 
@@ -331,7 +335,7 @@ public:
                 AddTwinsConnections(VertIndexes[i],VertIndexes[j]);
     }
 
-    void InitRealBorderVert()
+    void InitRealOriginalBorderVert()
     {
         RealBorderVert.clear();
         RealBorderVert.resize(mesh.vert.size(),false);
@@ -341,27 +345,49 @@ public:
         vcg::tri::Clean<MeshType>::RemoveDuplicateVertex(swap);
         swap.UpdateAttributes();
 
-        std::map<CoordType,size_t> CoordVert;
+        std::set<CoordType> CoordVert;
         for (size_t i=0;i<swap.vert.size();i++)
         {
             if (!swap.vert[i].IsB())continue;
             CoordType Pos=swap.vert[i].P();
-            CoordVert[Pos]=i;
+            CoordVert.insert(Pos);
         }
 
         for (size_t i=0;i<mesh.vert.size();i++)
         {
             if (!mesh.vert[i].IsB())continue;
             CoordType Pos=mesh.vert[i].P();
-            if (CoordVert.count(Pos)==0)continue;
+            if (CoordVert.find(Pos)==CoordVert.end())continue;
             RealBorderVert[i]=true;
         }
 
+        OriginalBorderVert.clear();
+        OriginalBorderVert.resize(mesh.vert.size(),false);
+
+        std::map<CoordType, size_t> CoordVertMap;
+        for (size_t i = 0; i < mesh.vert.size(); i++)
+        {
+            if (!mesh.vert[i].IsB()) continue;
+            CoordType Pos = mesh.vert[i].P();
+            if (CoordVertMap.find(Pos) == CoordVertMap.end())
+                CoordVertMap[Pos] = 1;
+            else CoordVertMap[Pos]++;
+        }
+
+        for (size_t i = 0; i < mesh.vert.size(); i++)
+        {
+            if (!mesh.vert[i].IsB()) continue;
+            if (!RealBorderVert[i]) continue;
+            CoordType Pos = mesh.vert[i].P();
+            if (CoordVertMap[Pos] == 1)
+                OriginalBorderVert[i] = true;
+        }
     }
 
     void AddTwinsConnections()
     {
         std::map<CoordType,std::vector<size_t> > CoordVert;
+        std::set<CoordType> CoordSet;
         //        RealBorderVert.clear();
         //        RealBorderVert.resize(mesh.vert.size(),false);
         for (size_t i=0;i<mesh.vert.size();i++)
@@ -370,6 +396,7 @@ public:
             //RealBorderVert[i]=true;
             CoordType Pos=mesh.vert[i].P();
             CoordVert[Pos].push_back(i);
+            CoordSet.insert(Pos);
         }
 
 
@@ -387,14 +414,18 @@ public:
         }
 
         //then add the connections
-        for (size_t i=0;i<mesh.vert.size();i++)
+        // for (size_t i=0;i<mesh.vert.size();i++)
+        // {
+        //     if (!mesh.vert[i].IsB())continue;
+        //     CoordType Pos=mesh.vert[i].P();
+        //     AddTwinsConnections(CoordVert[Pos]);
+        // }
+        for (auto Pos: CoordSet)
         {
-            if (!mesh.vert[i].IsB())continue;
-            CoordType Pos=mesh.vert[i].P();
             AddTwinsConnections(CoordVert[Pos]);
         }
 
-        InitRealBorderVert();
+        InitRealOriginalBorderVert();
     }
 
     bool IsBorder(const size_t &IndexN)const
@@ -506,6 +537,7 @@ private:
         size_t TMark;
         bool Selected;
         bool HasTwin;
+        int SymmTwin;
 
         void AddNeigh(size_t _NextNode,
                       ScalarType _NextWeight)
@@ -527,6 +559,7 @@ private:
             //IsBorder=false;
             Selected=false;
             HasTwin=false;
+            SymmTwin=-1;
         }
 
         size_t NonTwinNeigh()
@@ -797,6 +830,74 @@ private:
 
     }
 
+    // Must be called after twin initialization
+    void InitSymmetryMap()
+    {
+        if (!mesh.HasSymmetryAxis)
+            return;
+        
+        
+        // get all symmetry vertices
+        int* symmbit = mesh.symmbit;
+        std::set<size_t> vertexSet;
+        std::set<CoordType> pointSet;
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            FaceType* fp = &mesh.face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (fp->IsUserBit(symmbit[j]))
+                {
+                    size_t IndexV0 = vcg::tri::Index(mesh, fp->V0(j));
+                    size_t IndexV1 = vcg::tri::Index(mesh, fp->V1(j));
+                    vertexSet.insert(IndexV0);
+                    vertexSet.insert(IndexV1);
+                    pointSet.insert(fp->P0(j));
+                    pointSet.insert(fp->P1(j));
+                }
+            }
+        }
+
+        SymmPlane = SymmetryManager<MeshType>::PlaneSVD(pointSet);
+
+        // init symmetry map from node to node
+        for (auto vertex: vertexSet)
+        {
+            std::vector<size_t> nodeList;
+            IndexNodes(vertex, nodeList);
+            for (auto nodeIndex: nodeList)
+            {
+                Node& curNode = Nodes[nodeIndex];
+                // assert(curNode.HasTwin);
+                for (size_t i = 0; i < curNode.Neigh.size(); i++)
+                {
+                    if (curNode.Neigh[i].twin)
+                    {
+                        size_t vert = NodeVertI(curNode.Neigh[i].Node);
+                        size_t dir = NodeDirI(curNode.Neigh[i].Node);
+                        curNode.SymmTwin = IndexNode(vert, (dir+2)%4);
+                        std::pair<size_t,size_t> tmpair(nodeIndex, curNode.SymmTwin);
+                        
+                        break;
+                    }
+                }
+            }
+        }
+
+        // check: if symmetry node point to each other
+        for (auto vertex: vertexSet)
+        {
+            std::vector<size_t> nodeList;
+            IndexNodes(vertex, nodeList);
+            for (auto nodeIndex: nodeList)
+            {
+                size_t symmIndex = Nodes[nodeIndex].SymmTwin;
+                // assert(Nodes[symmIndex].SymmTwin == nodeIndex);
+            }
+        }
+
+    }
+
     void InitConnections()
     {
         //the neighbours of each vertex (include propagation)
@@ -828,6 +929,49 @@ private:
             std::cout<<"adding twins connections"<<std::endl;
         AddTwinsConnections();
 
+        // std::map<std::pair<size_t,size_t>, size_t> twinCount;
+        // for (size_t i = 0; i < mesh.vert.size(); i++)
+        // {
+        //     for (size_t j = 0; j < 4; j++)
+        //     {
+        //         size_t Node = IndexNode(i, j);
+        //         if (Nodes[Node].HasTwin)
+        //         {
+        //             std::set<size_t> tmp;
+        //             for (size_t k = 0; k < Nodes[Node].Neigh.size(); k++)
+        //             {
+        //                 if (Nodes[Node].Neigh[k].twin)
+        //                 {
+        //                     size_t Node1 = Nodes[Node].Neigh[k].Node;
+        //                     // std::pair<size_t, size_t> twin(std::min(Node,Node1), std::max(Node,Node1));
+        //                     // if (twinCount.find(twin)==twinCount.end())
+        //                     //     twinCount[twin] = 1;
+        //                     // else
+        //                     //     twinCount[twin]++;
+        //                     // std::cout << "Twin: " << Node << ", " << Node1 << std::endl;
+        //                     if (tmp.find(Node1)!=tmp.end())
+        //                     {
+        //                         std::cout << "Wrong!\n";
+        //                         break;
+        //                     }
+        //                     else
+        //                         tmp.insert(Node1);
+        //                 }
+        //             }
+        //         }       
+        //     }
+        // }
+
+        // std::cout << "Count: " << twinCount.size() << "maps.\n";
+        // for (auto mp: twinCount)
+        // {
+        //     if (mp.second != 2)
+        //     {
+        //         std::cout << "Not count 2: " << mp.first.first << " " << mp.first.second << std::endl;
+        //     }
+        // }
+        
+
         if (DebugMsg)
             std::cout<<"removing dead end links"<<std::endl;
         RemoveDeadEnd();
@@ -838,6 +982,14 @@ private:
         InitDirectConnections();
         if (DebugMsg)
             std::cout<<"terminated initialization connections"<<std::endl;
+
+        int cnt = 0;
+        for (size_t i = 0; i < RealBorderVert.size(); i++)
+        {
+            if (RealBorderVert[i])
+                cnt++;
+        }
+        std::cout << "After init there are " << cnt << " real border vertices.\n";
     }
 
     std::vector<ScalarType> NodeDist;
@@ -1027,6 +1179,12 @@ public:
             NeighNodes.push_back(NodeNeigh(IndexN,i));
     }
 
+    int GetNodeSymmTwin(const size_t& IndexN)
+    {
+        assert(IndexN<Nodes.size());
+        return Nodes[IndexN].SymmTwin;
+    }
+
     bool DirectNeigh(const size_t &IndexN,
                      const size_t &IndexNeigh)
     {
@@ -1135,6 +1293,9 @@ public:
 
         //initialize Border direction map
         InitBorderDirMap();
+
+        //initialize symmetry nodes
+        InitSymmetryMap();
 
         //initialize the rest used for queries
         NodeDist=std::vector<ScalarType>(NumNodes(),0);
@@ -1288,6 +1449,11 @@ public:
         //        return falsel
     }
 
+    bool IsOriginalBorderVert(const size_t &IndexVert)
+    {
+        return OriginalBorderVert[IndexVert];
+    }
+
     bool IsActive(const size_t &IndexNode)const
     {
         assert(IndexNode<Nodes.size());
@@ -1407,9 +1573,22 @@ public:
         size_t IndexV1=NodeVertI(IndexN1);
         std::pair<size_t,size_t> key(std::min(IndexV0,IndexV1),
                                      std::max(IndexV0,IndexV1));
-        assert(VertPos.count(key)>0);
+        // assert(VertPos.count(key)>0);
         return (VertPos.at(key));
         //return(VertPos[key]);
+    }
+
+    CoordType GetNodesCoord(const size_t& IndexN)
+    {
+        return mesh.vert[NodeVertI(IndexN)].P();
+    }
+
+    void GetNodesCoord(const std::vector<size_t>& PathNodes,
+                       std::set<CoordType>& PointSet)
+    {
+        PointSet.clear();
+        for (auto node: PathNodes)
+            PointSet.insert(GetNodesCoord(node));
     }
 
     void GetNodesPos(const std::vector<size_t> &PathNodes,bool IsLoop,

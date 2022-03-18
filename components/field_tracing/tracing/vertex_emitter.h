@@ -61,6 +61,26 @@ public:
         Receiver=VertexFieldGraph<MeshType>::TangentNode(Emitter);
     }
 
+    static void ComputeSymmetryEmitter(VertexFieldGraph<MeshType> & VFGraph,
+                                    const std::vector<std::vector<CoordType>> VertOrthoDir,
+                                    const size_t IndexV,
+                                    size_t& Emitter,
+                                    size_t& Receiver)
+    {
+        if (VertOrthoDir[IndexV].size()!=2)
+        {
+           std::cout<<"WARNING ON BORDER SYMMETRY AXIS There are " << VertOrthoDir[IndexV].size() << " Ortho dirs instead of 2" << std::endl;
+           assert(0);
+        }
+        CoordType Ortho0=VertOrthoDir[IndexV][0];
+        CoordType Ortho1=VertOrthoDir[IndexV][1];
+        CoordType TargetD=Ortho0+Ortho1;
+        TargetD.Normalize();
+        size_t BestDir=VFGraph.GetClosestDirTo(IndexV,TargetD);
+        Emitter=VertexFieldGraph<MeshType>::IndexNode(IndexV,BestDir);
+        Receiver=VertexFieldGraph<MeshType>::TangentNode(Emitter);
+    }
+
     static void ComputeNarrowEmitterReceivers(VertexFieldGraph<MeshType> &VFGraph,
                                               //const std::vector<std::vector<CoordType> > &VertOrthoDir,
                                               const std::vector<std::vector<CoordType> > &VertFlatDir,

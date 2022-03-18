@@ -116,6 +116,7 @@ class FieldTriMesh: public vcg::tri::TriMesh< std::vector<FieldTriVertex>,
 {
     typedef std::pair<CoordType,CoordType> CoordPair;
     std::set< CoordPair > FeaturesCoord;
+    std::set< CoordPair > SymmetryCoord;
 
 public:
 
@@ -149,6 +150,20 @@ public:
         }
     }
 
+    void InitSymmetryCoordsTable()
+    {
+        SymmetryCoord.clear();
+        for (size_t i=0;i<face.size();i++)
+        {
+            for (size_t j=0;j<3;j++)
+            {
+                if (!face[i].IsUserBit(symmbit[j]))continue;
+                CoordPair PosEdge(std::min(face[i].P0(j),face[i].P1(j)),
+                                  std::max(face[i].P0(j),face[i].P1(j)));
+                SymmetryCoord.insert(PosEdge);
+            }
+        }
+    }
 
     void SetFeatureFromTable()
     {
@@ -161,6 +176,21 @@ public:
                                   std::max(face[i].P0(j),face[i].P1(j)));
                 if(FeaturesCoord.count(PosEdge)==0)continue;
                 face[i].SetFaceEdgeS(j);
+            }
+        }
+    }
+
+    void SetSymmetryFromTable()
+    {
+        for (size_t i=0;i<face.size();i++)
+        {
+            for (size_t j=0;j<3;j++)
+            {
+                face[i].ClearUserBit(symmbit[j]);
+                CoordPair PosEdge(std::min(face[i].P0(j),face[i].P1(j)),
+                                  std::max(face[i].P0(j),face[i].P1(j)));
+                if(SymmetryCoord.count(PosEdge)==0)continue;
+                face[i].SetUserBit(symmbit[j]);
             }
         }
     }
@@ -518,6 +548,29 @@ public:
     {
         if(filename.empty()) return false;
         vcg::tri::io::ExporterFIELD<FieldTriMesh>::Save4ROSY(*this,filename.c_str());
+        return true;
+    }
+
+    bool SaveSymmetryAxis(const std::string &filename)
+    {
+        if(filename.empty()) return false;
+        std::ofstream myfile;
+        myfile.open (filename.c_str());
+        size_t num=0;
+        for (size_t i=0;i<face.size();i++)
+            for (size_t j=0;j<3;j++)
+            {
+                if (!face[i].IsUserBit(symmbit[j]))continue;
+                num++;
+            }
+        myfile <<num<<std::endl;
+        for (size_t i=0;i<face.size();i++)
+            for (size_t j=0;j<3;j++)
+            {
+                if (!face[i].IsUserBit(symmbit[j]))continue;
+                myfile << i << "," << j << std::endl;
+            }
+        myfile.close();
         return true;
     }
 

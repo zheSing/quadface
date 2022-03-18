@@ -52,7 +52,7 @@ vcg::GlTrimesh<TraceMesh> glWrapProblem;
 vcg::Trackball track;     /// the active manipulator
 GLW::DrawMode drawmode=GLW::DMFlat;     /// the current drawmode
 
-std::string pathM,pathF,pathS,pathOF,pathProject;
+std::string pathM,pathF,pathS,pathSymm,pathOF,pathProject;
 
 //bool to_pick=false;
 //int xMouse,yMouse;
@@ -61,12 +61,14 @@ bool drawSharpF=true;
 bool drawSing=true;
 bool drawField=true;
 bool drawPaths=true;
+bool drawCandidates=false;
 bool drawPathNodes=false;
 bool drawTwins=false;
 
 bool drawConcaveEmitters=false;
 bool drawConcaveReceivers=false;
 bool drawFlatEmitters=false;
+bool drawSymmEmitters=false;
 bool drawFlatReceivers=false;
 bool drawNarrowEmitters=false;
 bool drawNarrowReceivers=false;
@@ -77,6 +79,7 @@ bool drawChoosenEmitters=false;
 bool drawChoosenReceivers=false;
 bool drawMetaMesh=false;
 bool drawNarrowCandidates=false;
+bool drawRealBorderVert=false;
 
 //bool splitted=false;
 bool save_setup=false;
@@ -85,6 +88,7 @@ bool save_csv=false;
 bool batch_process=false;
 bool has_features=false;
 bool has_original_faces=false;
+bool has_symmetry=false;
 bool add_only_needed=false;
 bool meta_mesh_collapse=true;
 //bool interleave_removal=true;
@@ -98,7 +102,7 @@ int VisTraces=-1;
 bool subdivide_when_save=false;
 
 std::vector<size_t> ConcaveEmittersNode,ConcaveReceiversNode,
-FlatEmittersNode,FlatReceiversNode,
+FlatEmittersNode,FlatReceiversNode,SymmEmittersNode,
 NarrowEmittersNode,NarrowReceiversNode,
 ProblematicNodes,UnsatisfiedNodes,
 ChoosenEmittersNode,ChoosenReceiversNode,
@@ -110,6 +114,7 @@ GLVertGraph<TraceMesh> GLGraph(VGraph);
 typedef PatchTracer<TraceMesh> TracerType;
 TracerType PTr(VGraph);
 
+std::vector<bool> CurrCandidatesIsLoop;
 std::vector<std::vector<size_t> > CurrCandidates;
 std::vector<bool> ChosenIsLoop;
 std::vector<std::vector<size_t> > ChosenCandidates;
@@ -131,6 +136,7 @@ PatchColorMode OldPatchMode=CMPatchNone;
 //int BatchIncreaseValRem=-1;
 //int BatchIrregularRem=-1;
 //float BatchDistortionL=-1;
+bool cnt=true;
 
 
 void SaveSetupFile(const std::string pathProject,
@@ -442,6 +448,9 @@ void UpdateVisualNodes()
     CurrCandidates.clear();
     PTr.GetCurrCandidates(CurrCandidates);
 
+    CurrCandidatesIsLoop.clear();
+    PTr.GetCurrCandidatesIsLoop(CurrCandidatesIsLoop);
+
     ChosenCandidates.clear();
     PTr.GetCurrChosen(ChosenCandidates);
 
@@ -467,6 +476,8 @@ void UpdateVisualNodes()
     //PTr.GetFlatReceivers(FlatReceiversNode);
     PTr.GetActiveReceiversType(TVFlat,FlatReceiversNode);
 
+    PTr.GetActiveEmittersType(TVSymmetry,SymmEmittersNode);
+
     //PTr.GetNarrowActiveEmitters(NarrowEmittersNode);
     PTr.GetActiveEmittersType(TVNarrow,NarrowEmittersNode);
 
@@ -486,6 +497,36 @@ void UpdateVisualNodes()
     PTr.GetTraceableFlatNodes(TraceableFlatNode);
 
     PTr.GetUnsolvedMesh(problematic_mesh);
+}
+
+
+void DrawNonManifold()
+{
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glDisable(GL_LIGHTING);
+    glDepthRange(0,0.9995);
+    // glPointSize(10);
+    glLineWidth(20);
+
+    glBegin(GL_LINES);
+    vcg::glColor(vcg::Color4b(156,0,255,255));
+
+    for (size_t i = 0; i < mesh.face.size(); i++)
+    {
+        for (size_t j = 0; j < 3; j++)
+        {
+            // if (mesh.face[i].V(j)->IsS())
+            //     vcg::glVertex(mesh.face[i].P(j));
+            if (!vcg::face::IsManifold(mesh.face[i], j))
+            {
+                vcg::glVertex(mesh.face[i].P0(j));
+                vcg::glVertex(mesh.face[i].P1(j));
+            }
+        }
+    }
+    
+    glEnd();
+    glPopAttrib();
 }
 
 void InitStructures()
@@ -566,6 +607,14 @@ void TW_CALL JoinConcave(void *)
 void TW_CALL AddLoops(void *)
 {
     PTr.TraceLoops(false);
+    PTr.UpdatePartitionsFromChoosen();
+    PTr.ColorByPartitions();
+    UpdateVisualNodes();
+}
+
+void TW_CALL TraceSymm(void *)
+{
+    PTr.TraceFromSymmetry(false);
     PTr.UpdatePartitionsFromChoosen();
     PTr.ColorByPartitions();
     UpdateVisualNodes();
@@ -730,6 +779,14 @@ void LoadAll()
         bool loadedFeatures=mesh.LoadSharpFeatures(pathS);
         if (!loadedFeatures){
             std::cout<<"*** ERROR LOADING FEATURES ***"<<std::endl;
+            exit(0);
+        }
+    }
+
+    if (has_symmetry){
+        bool loadedSymmetry=mesh.LoadSymmetryAxis(pathSymm);
+        if (!loadedSymmetry){
+            std::cout<<"*** ERROR LOADING SYMMETRY AXIS ***"<<std::endl;
             exit(0);
         }
     }
@@ -934,12 +991,17 @@ void InitLoopBar(QWidget *w)
 
     TwAddVarRW(bar,"DrawPaths",TW_TYPE_BOOLCPP,&drawPaths,"label='Draw Paths'");
     TwAddVarRW(bar,"DrawPathNodes",TW_TYPE_BOOLCPP,&drawPathNodes,"label='Draw Path Nodes'");
+    TwAddVarRW(bar,"DrawCandidates",TW_TYPE_BOOLCPP,&drawCandidates,"label='Draw Candidates'");
+    TwAddVarRW(bar,"DrawRealBorderVert",TW_TYPE_BOOLCPP,&drawRealBorderVert,"label='Draw Real Border'");
+
 
     TwAddVarRW(bar,"DrawConcaveEmit",TW_TYPE_BOOLCPP,&drawConcaveEmitters,"label='Draw Concave Emitters'");
     TwAddVarRW(bar,"DrawConcaveReceive",TW_TYPE_BOOLCPP,&drawConcaveReceivers,"label='Draw Concave Receivers'");
 
     TwAddVarRW(bar,"DrawFlatEmit",TW_TYPE_BOOLCPP,&drawFlatEmitters,"label='Draw Flat Emitters'");
     TwAddVarRW(bar,"DrawFlatReceive",TW_TYPE_BOOLCPP,&drawFlatReceivers,"label='Draw Flat Receivers'");
+
+    TwAddVarRW(bar,"DrawSymmEmit",TW_TYPE_BOOLCPP,&drawSymmEmitters,"label='Draw Symm Emitters'");
 
     TwAddVarRW(bar,"DrawChoosenEmit",TW_TYPE_BOOLCPP,&drawChoosenEmitters,"label='Draw Choosen Emitters'");
     TwAddVarRW(bar,"DrawChoosenReceive",TW_TYPE_BOOLCPP,&drawChoosenReceivers,"label='Draw Choosen Receivers'");
@@ -963,6 +1025,7 @@ void InitLoopBar(QWidget *w)
     TwAddButton(bar,"InitGraph",InitGraph,0," label='Init Graph' ");
     TwAddButton(bar,"JoinNarrow",JoinNarrow,0," label='Trace Narrow' ");
     TwAddButton(bar,"JoinConcave",JoinConcave,0," label='Trace Concave' ");
+    TwAddButton(bar,"TraceSymmetry",TraceSymm,0," label='Trace From Symm' ");
     TwAddButton(bar,"TraceLoops",AddLoops,0," label='Trace Loops' ");
     TwAddButton(bar,"TraceBorders",TraceBorder,0," label='Trace Borders' ");
     TwAddButton(bar,"BatchProcess",BatchProcess,0," label='Batch Process' ");
@@ -1129,7 +1192,20 @@ void GLWidget::paintGL ()
         if (drawConcaveReceivers)
             GLGraph.GLDrawNodes(ConcaveReceiversNode,mesh.bbox.Diag()*0.005);
         if (drawFlatEmitters)
-            GLGraph.GLDrawNodes(FlatEmittersNode,mesh.bbox.Diag()*0.005,false,10,true);
+        {
+            GLGraph.GLDrawNodes(FlatEmittersNode,mesh.bbox.Diag()*0.005,true,10,false);
+            // if (cnt)
+            // {
+            //     for (size_t i = 0; i < FlatEmittersNode.size(); i++)
+            //         std::cout << (FlatEmittersNode[i]/4) << std::endl;  
+            //     cnt = false;
+            // }
+        }
+        if (drawSymmEmitters)
+        {
+            GLGraph.GLDrawNodes(SymmEmittersNode,mesh.bbox.Diag()*0.005);
+        }
+            
         if (drawChoosenEmitters)
             GLGraph.GLDrawNodes(ChoosenEmittersNode,mesh.bbox.Diag()*0.005);
         if (drawFlatReceivers)
@@ -1156,12 +1232,19 @@ void GLWidget::paintGL ()
         if (testdrawDisables)
             GLGraph.GLDrawNodes(Disabled,mesh.bbox.Diag()*0.002);
 
+        DrawNonManifold();
 
         if (drawCorners)
             GLGraph.GLDrawPoints(PatchCornerPos,10,vcg::Color4b(255,0,255,255));
 
         if (drawPaths)
             GLGraph.GLDrawPaths(ChosenCandidates,ChosenIsLoop,mesh.bbox.Diag()*0.01,drawPathNodes,VisTraces);//,true);
+
+        if (drawRealBorderVert)
+            GLGraph.GLDrawPoints(PTr.GetRealBorderPos(),10,vcg::Color4b(255,255,0,255));
+
+        if (drawCandidates)
+            GLGraph.GLDrawPaths(CurrCandidates,CurrCandidatesIsLoop,mesh.bbox.Diag()*0.01,drawPathNodes,VisTraces);
 
         //GLGraph.GLDrawPaths(DiscardedCandidates,DiscardedIsLoop,mesh.bbox.Diag()*0.01,true);
         //GLGraph.GLDrawNodes(TraceableFlatNode,mesh.bbox.Diag()*0.002);

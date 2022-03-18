@@ -405,7 +405,7 @@ public:
         collapseSurvivingMicroEdges(m,thr);
 
         // would affect uv
-        UpdateCoherentSharp(m,par);
+        // UpdateCoherentSharp(m,par);
 
         para.adapt = true;
         para.smoothFlag   = true;

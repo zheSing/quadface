@@ -75,6 +75,7 @@ std::string pathT="";
 
 std::string projM="";
 std::string projS="";
+std::string projSymm="";
 
 vcg::Trackball track;//the active manipulator
 
@@ -119,6 +120,7 @@ bool has_texture=false;
 //size_t ErodeDilateSteps=4;
 
 bool do_remesh=true;
+bool do_init_feature=true;
 int remesher_iterations=15;
 ScalarType remesher_aspect_ratio=0.3;
 int remesher_termination_delta=10000;
@@ -133,7 +135,7 @@ cv::Mat texture;
 
 enum gui_mode{ None, Vertex, Edge, Symm } uimode, uimode_;
 
-typedef Intersection<ScalarType> InterType;
+typedef MyIntersection<ScalarType> InterType;
 typedef Ray<ScalarType> RayType;
 
 BVHT<FieldTriMesh> bvh_tree;
@@ -165,7 +167,7 @@ void DoBatchProcess ()
     BPar.SharpFactor=SharpFactor;
     BPar.sharp_feature_thr=sharp_feature_thr;
     BPar.surf_dist_check=surf_dist_check;
-    BPar.UpdateSharp=(!(has_features || has_features_fl));
+    BPar.UpdateSharp=do_init_feature;
     MeshPrepocess<FieldTriMesh>::BatchProcess(tri_mesh,BPar,FieldParam);
     drawfield=true;
 }
@@ -214,7 +216,6 @@ void TW_CALL SelectSymmetry(void *)
     uimode_ = Symm;
 }
 
-
 void TW_CALL SaveFeatures(void*)
 {
     tri_mesh.SaveSharpFeatures(projS);
@@ -227,6 +228,12 @@ void TW_CALL SaveMesh(void*)
     // std::string projM = pathM.substr(0,indexExt) + "_ref.obj";
     tri_mesh.SaveTriMesh(projM);
     std::cout<<"Saving Mesh TO:" << projM.c_str() << std::endl;
+}
+
+void TW_CALL SaveSymmetryAxis(void*)
+{
+    tri_mesh.SaveSymmetryAxis(projSymm);
+    std::cout<<"Saving Symmetry Axis TO:" << projSymm.c_str() << std::endl;
 }
 
 void DoAutoRemesh()
@@ -458,6 +465,14 @@ void InitFieldBar(QWidget *w)
         TwAddButton(barQuad, "SaveFeatures", SaveFeatures, 0, "label='SaveFeatures'");
         TwAddVarRW(barQuad, "MeshName", TW_TYPE_STDSTRING, &projM, "label='MeshName'");
         TwAddButton(barQuad, "SaveMesh", SaveMesh, 0, "label='SaveMesh'");
+        TwAddVarRW(barQuad, "SymmName", TW_TYPE_STDSTRING, &projSymm, "label='SymmName'");
+        TwAddButton(barQuad, "SaveSymmetryAxis", SaveSymmetryAxis, 0, "label='SaveSymmetryAxis'");
+
+        TwAddSeparator(barQuad, "sep4", "label=''");
+        TwAddVarRW(barQuad, "Init_Feature", TW_TYPE_BOOLCPP, &do_init_feature, "label='Init_Feature'");
+        TwAddVarRW(barQuad, "Do_Remesh", TW_TYPE_BOOLCPP, &do_remesh, "label='Do_Remesh'");
+        TwAddButton(barQuad, "BatchProcess", BatchProcess, 0, "label='Batch Process'");
+        TwAddButton(barQuad, "SaveData", SaveData, 0, "label='SaveData'");
 
         // TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
 
@@ -548,6 +563,7 @@ GLWidget::GLWidget(QWidget *parent)
     size_t indexExt=pathM.find_last_of(".");       
     projM = pathM.substr(0, indexExt) + "_ref.obj";
     projS = pathM.substr(0, indexExt) + "_ref.sharp";
+    projSymm = pathM.substr(0, indexExt) + "_ref.symm";
 
     std::cout<<"Loaded "<<tri_mesh.face.size()<<" faces "<<std::endl;
     std::cout<<"Loaded "<<tri_mesh.vert.size()<<" vertices "<<std::endl;

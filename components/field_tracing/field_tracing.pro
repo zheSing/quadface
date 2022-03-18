@@ -29,6 +29,11 @@ CONFIG += qt
 CONFIG += c++11
 CONFIG -= app_bundle
 
+# ignore warning
+CONFIG += warn_off
+QMAKE_CXXFLAGS += -Wall
+QMAKE_CXXFLAGS += -Wno-comment
+
 QT += core gui openglwidgets xml widgets
 
 #Debug/release optimization flags

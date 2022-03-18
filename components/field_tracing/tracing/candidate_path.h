@@ -32,7 +32,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "vertex_classifier.h"
 
 
-enum TraceType{TraceDirect,DijkstraReceivers,TraceLoop};
+enum TraceType{TraceDirect,DijkstraReceivers,TraceLoop,TraceSymmetry};
 
 struct CandidateTrace
 {
@@ -211,6 +211,16 @@ bool UpdateCandidate(VertexFieldGraph<MeshType> &VFGraph,
         if (!hasTraced)return false;
         ToUpdate.PathNodes=PathN;
         ToUpdate.IsLoop=true;
+        return true;
+    }
+    if (ToUpdate.TracingMethod==TraceSymmetry)
+    {
+        std::vector<size_t> PathN;
+        bool hasTraced=TraceSymmetryPath(VFGraph,IndexN0,Drift,MaxDijstraDist,PathN);
+        if(!hasTraced) return false;
+        // for (size_t i = 0; i < PathN.size(); i++) VFGraph.SetActive(PathN[i], true);
+        ToUpdate.PathNodes=PathN;
+        ToUpdate.InitNode=PathN[0];
         return true;
     }
     return false;

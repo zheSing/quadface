@@ -27,7 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define VERTEX_CLASSIFIER
 
 
-enum TypeVert{TVNarrow,TVConcave,TVConvex,TVFlat,TVInternal,TVChoosen,TVNone};
+enum TypeVert{TVNarrow,TVConcave,TVConvex,TVFlat,TVInternal,TVChoosen,TVSymmetry,TVNone};
 
 #include "vert_field_graph.h"
 #include "edge_direction_table.h"

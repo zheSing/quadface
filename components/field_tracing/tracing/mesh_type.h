@@ -134,7 +134,11 @@ class TraceMesh   : public vcg::tri::TriMesh< std::vector<TraceVertex>,std::vect
 {
 public:
     std::vector<std::pair<size_t,size_t> > SharpFeatures;
+    std::vector<std::pair<size_t,size_t> > SymmetryAxis;
     std::vector<size_t> SharpCorners;
+    bool HasSymmetryAxis = false;
+
+    int symmbit[3];
 
 
     void UpdateAttributes()
@@ -472,6 +476,40 @@ public:
             assert(EIndex<4);
             face[FIndex].SetFaceEdgeS(EIndex);
             SharpFeatures.push_back(std::pair<size_t,size_t>(FIndex,EIndex));
+        }
+        fclose(f);
+        return true;
+    }
+
+    bool LoadSymmetryAxis(std::string &SymmPath)
+    {
+        if (!HasSymmetryAxis)
+        {
+            HasSymmetryAxis = true;
+            for (size_t i = 0; i < 3; i++)
+            {
+                symmbit[i] = FaceType::NewBitFlag();
+                vcg::tri::UpdateFlags<TraceMesh>::FaceClear(*this, symmbit[i]);
+            }
+        }
+
+        SymmetryAxis.clear();
+        FILE *f=NULL;
+        f=fopen(SymmPath.c_str(),"rt");
+        if(f==NULL) return false;
+        int Num=0;
+        fscanf(f,"%d\n",&Num);
+        std::cout<<"Num "<<Num<<std::endl;
+        for (size_t i=0;i<(size_t)Num;i++)
+        {
+            int FIndex,EIndex;
+            fscanf(f,"%d,%d\n",&FIndex,&EIndex);
+            assert(FIndex>=0);
+            assert(FIndex<(int)face.size());
+            assert(EIndex>=0);
+            assert(EIndex<4);
+            face[FIndex].SetUserBit(symmbit[EIndex]);
+            SymmetryAxis.push_back(std::pair<size_t,size_t>(FIndex,EIndex));
         }
         fclose(f);
         return true;

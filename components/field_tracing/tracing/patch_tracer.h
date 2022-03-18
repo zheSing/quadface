@@ -32,10 +32,12 @@ size_t Time_Collapse_Step4=0;
 #include "vertex_emitter.h"
 #include "patch_manager.h"
 #include "metamesh.h"
+#include "../../feature_selection/symmetry.h"
 
 
 #include "vert_field_graph.h"
 #include "graph_query.h"
+#include "graph_symmetry.h"
 #include <vcg/math/matrix33.h>
 #include <vcg/complex/algorithms/parametrization/tangent_field_operators.h>
 #include <vcg/complex/algorithms/point_sampling.h>
@@ -726,6 +728,349 @@ bool TraceDijkstraPath(VertexFieldGraph<MeshType> &VFGraph,
     return true;
 }
 
+
+
+
+template<class MeshType>
+bool IsSymmetryPath(VertexFieldGraph<MeshType>& VFGraph,
+                    const std::vector<size_t>& Path0,
+                    const std::vector<size_t>& Path1)
+{
+    typedef typename MeshType::ScalarType ScalarType;
+
+    ScalarType SymmEval = VertexFieldSymmetry<MeshType>::PathSymmetryEval(VFGraph, Path0, Path1);
+
+    ScalarType Epsilon = VFGraph.Mesh().bbox.Diag() * 0.05;
+
+    return SymmEval < Epsilon;
+    // typedef typename MeshType::CoordType CoordType;
+    // typedef typename vcg::Point4<ScalarType> PlaneType;
+
+    // std::set<CoordType> PointSet;
+    // VFGraph.GetNodesCoord(Path, PointSet);
+    // PlaneType PathPlane = SymmetryManager<MeshType>::PlaneSVD(PointSet);
+
+    // CoordType PathNormal(PathPlane[0], PathPlane[1], PathPlane[2]);
+    // CoordType SymmNormal(VFGraph.SymmPlane[0], VFGraph.SymmPlane[1], VFGraph.SymmPlane[2]);
+
+    // // check verticality
+    // if (PathNormal.normalized() * SymmNormal.normalized() > 0.2)
+    // {
+    //     std::cout << "Not vertical.\n";
+    //     return false;
+    // }
+
+    // // check point offset
+    // CoordType center;
+    // center.SetZero();
+    // ScalarType offset = 0;
+    // ScalarType deno = sqrt(PathPlane[0]*PathPlane[0] + PathPlane[1]*PathPlane[1] + PathPlane[2]*PathPlane[2]);
+    // for (auto Point: PointSet)
+    // {
+    //     center += Point;
+    //     offset += SymmetryManager<MeshType>::PointToPlane(Point, PathPlane, deno);
+    // }
+    // center /= PointSet.size();
+    // offset /= PointSet.size();
+
+    // ScalarType Epsilon = VFGraph.Mesh().bbox.Diag() * 0.1;
+
+    // // path deviation
+    // if (offset > Epsilon)
+    // {
+    //     std::cout << "Path deivate.\n";
+    //     return false;
+    // }
+    
+    // // center offset
+    // if (SymmetryManager<MeshType>::PointToPlane(center, VFGraph.SymmPlane) > Epsilon)
+    // {
+    //     std::cout << "Center Offset.\n";
+    //     return false;
+    // }
+
+    return true;
+}
+
+template<class MeshType>
+bool ReversePath(VertexFieldGraph<MeshType>& VFGraph,
+                std::vector<size_t>& dst,
+                const std::vector<size_t>& src,
+                const typename MeshType::ScalarType Drift)
+{
+    dst.clear();
+    dst = src;
+
+    std::reverse(dst.begin(), dst.end());
+
+    // dst[0] = VFGraph.TangentNode(dst[0]);
+    // for (size_t i = 0; i < dst.size()-1; i++)
+    // {
+    //     size_t cur = dst[i];
+    //     size_t& next = dst[i+1];
+
+    //     // set next node
+    //     next = VFGraph.TangentNode(next);
+
+    //     // find neighbor
+    //     std::vector<size_t> neighs;
+    //     VFGraph.GetNodeNeigh(cur, neighs);
+
+    //     bool connected = false;
+    //     for (size_t j = 0; j < neighs.size(); j++)
+    //     {
+    //         if (neighs[j] == next && VFGraph.ActiveNeigh(cur, j))
+    //         {
+    //             connected = true;
+    //             break;
+    //         }
+    //     }
+    //     if (!connected)
+    //         return false;
+    // }
+
+    for (size_t i = 0; i < dst.size(); i++)
+    {
+        dst[i] = VFGraph.TangentNode(dst[i]);
+        // VFGraph.SetActive(dst[i], true);
+    }
+        
+
+    return VertexFieldQuery<MeshType>::ExpandPath(VFGraph, dst, false, Drift);
+}
+
+template<class MeshType>
+bool MergeSymmetryPath(VertexFieldGraph<MeshType>& VFGraph,
+                       std::vector<size_t>& dst, 
+                       const std::vector<size_t>& src0, 
+                       const std::vector<size_t>& src1,
+                       const typename MeshType::ScalarType& Drift)
+{
+    // IsLoop = false;
+    dst.clear();
+    assert(src0.size() && src1.size());
+    // assert(VFGraph.Nodes[src0[0]].SymmTwin == src1[0]);
+
+    // check if the end is the same
+    // if (VFGraph.GetNodeSymmTwin(src0.back()) != -1)
+    // {
+    //     if (VFGraph.GetNodeSymmTwin(src1.back()) != src0.back())
+    //     {
+    //         std::cout << "Not Symm Receiver failed.\n";
+    //         return false;
+    //     }
+    //     // IsLoop = true;
+    // }
+    // else if (VFGraph.GetNodeSymmTwin(src1.back()) != -1)
+    // {
+    //     std::cout << "Not Symm Receiver failed.\n"; 
+    //     return false;
+    // }
+
+    // reverse the path and merge
+    if (ReversePath(VFGraph, dst, src0, Drift))
+    {
+        dst.insert(dst.end(), src1.begin(), src1.end());
+        return true;
+    }
+    else if (ReversePath(VFGraph, dst, src1, Drift))
+    {
+        dst.insert(dst.end(), src0.begin(), src0.end());
+        return true;
+    }
+    else 
+    {
+        std::cout << "Reverse failed.\n";
+        return false;
+    }
+}
+
+template<class MeshType>
+bool TraceSymmetryPath(VertexFieldGraph<MeshType>& VFGraph,
+                       const size_t StartingNode,
+                       const typename MeshType::ScalarType &Drift,
+                       const typename MeshType::ScalarType &MaxWeight,
+                       std::vector<size_t> &PathN)
+{
+    // get twin symmetry node
+    size_t symmTwin = VFGraph.GetNodeSymmTwin(StartingNode);
+
+    // first try: loop path
+    // bool loopTraced = TraceLoopPath(VFGraph, StartingNode, Drift, PathN);
+    // if (loopTraced && IsSymmetryPath(VFGraph, PathN))
+    // {
+    //     IsLoop = true;
+    //     return true;
+    // }
+    // else
+    // {
+    //     std::cout << "Node " << StartingNode << " trace loop failed\n";
+    // }
+    // // std::cout << StartingNode << ": Loop1 failed.\n";
+    // PathN.clear();
+    // loopTraced = TraceLoopPath(VFGraph, symmTwin, Drift, PathN);
+    // if (loopTraced && IsSymmetryPath(VFGraph, PathN))
+    // {
+    //     IsLoop = true;
+    //     return true;
+    // }
+    // else
+    // {
+    //     std::cout << "Node " << symmTwin << " trace loop failed\n";
+    // }
+    // std::cout << StartingNode << ": Loop2 failed.\n";
+
+    // back up all the selected point
+    // std::vector<bool> IsSelected;
+    // std::vector<bool> IsSymmNode;
+    // IsSelected.resize(VFGraph.NumNodes(), false);
+    // IsSymmNode.resize(VFGraph.NumNodes(), false);
+    // for (size_t i = 0; i < VFGraph.NumNodes(); i++)
+    // {
+    //     if (VFGraph.IsSelected(i))
+    //         IsSelected[i] = true;
+    //     if (VFGraph.GetNodeSymmTwin(i) >= 0)
+    //         IsSymmNode[i] = true;
+    // }
+
+    // not trace back to symmetry twin
+    // VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    // VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+
+    /*********************************************
+     * Second Version: trace one side first,
+     *                  the other try to end at the
+     *                  same vert.
+     ********************************************/
+    
+    // std::vector<size_t> StartDijPathMain;
+    // bool StartDijTraced = TraceDijkstraPath(VFGraph, StartingNode, Drift, MaxWeight, StartDijPathMain);
+    // if (StartDijTraced)
+    // {
+    //     if (IsSymmNode[StartDijPathMain.back()])
+    //     {
+    //         // if end at symmetry node, try another side
+    //         VFGraph.ClearSelection();
+    //         VFGraph.Select(VFGraph.GetNodeSymmTwin(StartDijPathMain.back()));
+    //         std::vector<size_t> TwinDijPath;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDijkstraPath(VFGraph, symmTwin, Drift, MaxWeight, TwinDijPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, StartDijPathMain, TwinDijPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN)) 
+    //         return true;
+    //         // false, restore selection
+    //         VFGraph.Select(IsSelected);
+    //     }
+    //     else 
+    //     {
+    //         // else try the first method
+    //         std::vector<size_t> TwinDijPath, TwinDirectPath;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDijkstraPath(VFGraph, symmTwin, Drift, MaxWeight, TwinDijPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, StartDijPathMain, TwinDijPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN))
+    //         return true;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDirectPath(VFGraph, symmTwin, TwinDirectPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, StartDijPathMain, TwinDirectPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN))
+    //         return true;
+    //     }
+    // }
+
+    // std::vector<size_t> TwinDijPathMain;
+    // VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    // VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    // bool TwinDijTraced = TraceDijkstraPath(VFGraph, symmTwin, Drift, MaxWeight, TwinDijPathMain);
+    // if (TwinDijTraced)
+    // {
+    //     if (IsSymmNode[TwinDijPathMain.back()])
+    //     {
+    //         // if end at symmetry node, try another side
+    //         VFGraph.ClearSelection();
+    //         VFGraph.Select(VFGraph.GetNodeSymmTwin(TwinDijPathMain.back()));
+    //         std::vector<size_t> StartDijPath;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDijkstraPath(VFGraph, StartingNode, Drift, MaxWeight, StartDijPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, TwinDijPathMain, StartDijPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN)) 
+    //         return true;
+    //         // false, restore selection
+    //         VFGraph.Select(IsSelected);
+    //     }
+    //     else 
+    //     {
+    //         // else try the first method
+    //         std::vector<size_t> StartDijPath, StartDirectPath;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDijkstraPath(VFGraph, StartingNode, Drift, MaxWeight, StartDijPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, TwinDijPathMain, StartDijPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN))
+    //         return true;
+    //         VFGraph.SetActive(VFGraph.TangentNode(StartingNode), false);
+    //         VFGraph.SetActive(VFGraph.TangentNode(symmTwin), false);
+    //         if (TraceDirectPath(VFGraph, StartingNode, StartDirectPath) &&
+    //             MergeSymmetryPath(VFGraph, PathN, TwinDijPathMain, StartDirectPath, IsLoop, Drift) &&
+    //             IsSymmetryPath(VFGraph, PathN))
+    //         return true;
+    //     }
+    // }
+
+
+
+    /**********************************************
+     * First Version: trace and merge, check if symmetry
+    ************************************************/
+
+    // second try: combine two choice
+
+    bool directTraced[2], dijTraced[2];
+    std::vector<size_t> direct[2], dij[2];
+    
+    dijTraced[0] = TraceDijkstraPath(VFGraph, StartingNode, Drift, MaxWeight, dij[0]);
+    dijTraced[1] = TraceDijkstraPath(VFGraph, symmTwin, Drift, MaxWeight, dij[1]);
+    directTraced[0] = TraceDirectPath(VFGraph, StartingNode, direct[0]);
+    directTraced[1] = TraceDirectPath(VFGraph, symmTwin, direct[1]);
+
+    if (dijTraced[0] && dijTraced[1])
+    {
+        if (IsSymmetryPath(VFGraph, dij[0], dij[1]) && MergeSymmetryPath(VFGraph, PathN, dij[0], dij[1], Drift))
+            return true;
+    }
+    
+    if (dijTraced[0] && directTraced[1])
+    {
+        if (IsSymmetryPath(VFGraph, dij[0], direct[1]) && MergeSymmetryPath(VFGraph, PathN, dij[0], direct[1], Drift))
+            return true;
+    }
+
+    if (directTraced[0] && dijTraced[1])
+    {
+        if (IsSymmetryPath(VFGraph, direct[0], dij[1]) && MergeSymmetryPath(VFGraph, PathN, direct[0], dij[1], Drift))
+            return true;
+    }
+
+    if (directTraced[0] && directTraced[1])
+    {
+        if (IsSymmetryPath(VFGraph, direct[0], direct[1]) && MergeSymmetryPath(VFGraph, PathN, direct[0], direct[1], Drift))
+            return true;
+    }
+
+    std::cout << StartingNode << ": All failed.\n";
+
+
+    // VFGraph.SetActive(VFGraph.TangentNode(StartingNode), true);
+    // VFGraph.SetActive(VFGraph.TangentNode(symmTwin), true);
+    
+    PathN.clear();
+    return false;
+}
+
 template <class MeshType>
 bool TraceLoopPath(VertexFieldGraph<MeshType> &VFGraph,
                    const size_t StartingNode,
@@ -836,6 +1181,7 @@ public:
 
 private:
 
+    std::vector<int> SymmVert;
     std::vector<TypeVert> VertType;
     std::vector<TypeVert > NodeEmitterTypes;
     std::vector<TypeVert> NodeReceiverTypes;
@@ -1014,6 +1360,51 @@ private:
         InitVertType(ConvexV,ConcaveV,NarrowV,FlatV);
     }
 
+    void InitSymmVert()
+    {
+        // prepare for symmetry emitter
+        SymmVert.resize(Mesh().vert.size(), -1);
+
+        if (!Mesh().HasSymmetryAxis)
+            return;
+        
+        std::map<CoordType, size_t> SymmMap;
+
+        for (size_t i = 0; i < Mesh().face.size(); i++)
+        {
+            FaceType* fp = &Mesh().face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (fp->IsUserBit(Mesh().symmbit[j]))
+                {
+                    size_t Idx0 = vcg::tri::Index(Mesh(),fp->V0(j));
+                    size_t Idx1 = vcg::tri::Index(Mesh(),fp->V1(j));
+                    CoordType P0 = fp->P0(j);
+                    CoordType P1 = fp->P1(j);
+                    if (SymmMap.find(P0)==SymmMap.end() || SymmMap[P0]!=Idx0)
+                    {
+                        SymmMap[P0] = Idx0;
+                    }
+                    else
+                    {
+                        SymmVert[Idx0] = SymmMap[P0];
+                        SymmVert[SymmMap[P0]] = Idx0;
+                    }
+                    if (SymmMap.find(P1)==SymmMap.end() || SymmMap[P1]!=Idx1)
+                    {
+                        SymmMap[P1] = Idx1;
+                    }
+                    else
+                    {
+                        SymmVert[Idx1] = SymmMap[P1];
+                        SymmVert[SymmMap[P1]] = Idx1;
+                    }
+                }
+            }
+        }
+            
+    }
+
 public:
 
     void SampleLoopEmitters(bool filter_border,size_t fixed_num=0)
@@ -1086,14 +1477,24 @@ private:
 
             if (VertType[i]==TVFlat)
             {
-                size_t Emitter,Receiver;
-                VertexEmitter<MeshType>::ComputeFlatEmitterReceivers(VFGraph,VertOrthoDir,i,Emitter,Receiver);
-                //VertexEmitter<MeshType>::ComputeFlatEmitterReceivers(VFGraph,VertOrthoDir,VertFlatDir,i,Emitter,Receiver);
-                assert(Emitter!=Receiver);
-                assert(NodeEmitterTypes[Emitter]==TVNone);
-                NodeEmitterTypes[Emitter]=TVFlat;
-                assert(NodeReceiverTypes[Receiver]==TVNone);
-                NodeReceiverTypes[Receiver]=TVFlat;
+                if (SymmVert[i] >= 0)
+                {
+                    size_t Emitter, Receiver;
+                    VertexEmitter<MeshType>::ComputeSymmetryEmitter(VFGraph,VertOrthoDir,i,Emitter,Receiver);
+                    NodeEmitterTypes[Emitter]=TVSymmetry;
+                    NodeEmitterTypes[Receiver]=TVSymmetry;
+                }
+                else
+                {
+                    size_t Emitter,Receiver;
+                    VertexEmitter<MeshType>::ComputeFlatEmitterReceivers(VFGraph,VertOrthoDir,i,Emitter,Receiver);
+                    //VertexEmitter<MeshType>::ComputeFlatEmitterReceivers(VFGraph,VertOrthoDir,VertFlatDir,i,Emitter,Receiver);
+                    assert(Emitter!=Receiver);
+                    assert(NodeEmitterTypes[Emitter]==TVNone);
+                    NodeEmitterTypes[Emitter]=TVFlat;
+                    assert(NodeReceiverTypes[Receiver]==TVNone);
+                    NodeReceiverTypes[Receiver]=TVFlat;
+                }
             }
             if (VertType[i]==TVConcave)
             {
@@ -1124,6 +1525,26 @@ private:
         }
 
         SampleLoopEmitters(false);
+
+        // clear step
+        // check if symmetry node are the same with twin
+        for (size_t i = 0; i < VFGraph.NumNodes(); i++)
+        {
+            if (NodeEmitterTypes[i] == TVSymmetry)
+            {
+                int symmTwin = VFGraph.GetNodeSymmTwin(i);
+                // assert(symmTwin >= 0);
+                if (NodeEmitterTypes[symmTwin] != TVSymmetry)
+                    NodeEmitterTypes[i] = TVFlat;
+            }
+            if (NodeReceiverTypes[i] == TVSymmetry)
+            {
+                int symmTwin = VFGraph.GetNodeSymmTwin(i);
+                // assert(symmTwin >= 0);
+                if (NodeReceiverTypes[symmTwin] != TVSymmetry)
+                    NodeReceiverTypes[i] = TVFlat;
+            }
+        }
 
     }
 
@@ -1163,6 +1584,7 @@ private:
 
             if (VertType[i]==TVFlat)//||(VertType[i]==Narrow))
             {
+                // symmetry type also in this scope
                 //get the nodes of a given vertex
                 std::vector<size_t> NodesI;
                 VertexFieldGraph<MeshType>::IndexNodes(i,NodesI);
@@ -1205,11 +1627,14 @@ private:
             //bool expanded=ExpandPath(Candidates[i].PathNodes,Candidates[i].IsLoop);
             bool expanded=VertexFieldQuery<MeshType>::ExpandPath(VFGraph,Candidates[i].PathNodes,
                                                                  Candidates[i].IsLoop,Drift);
+            if (!expanded)
+                std::cout << "Path " << i << " expanded false.\n";
             //std::cout<<"SIZE "<<Candidates[i].PathNodes.size()<<std::endl;
             bool SelfInt=VertexFieldQuery<MeshType>::SelfIntersect(VFGraph,Candidates[i].PathNodes,Candidates[i].IsLoop);
             if (SelfInt){
                 SelfIntN++;
                 DiscardedCandidates.push_back(Candidates[i]);
+                std::cout << "Path " << i << " self intersect.\n";
                 continue;
             }
             if (expanded)
@@ -1275,6 +1700,11 @@ private:
         }
 
         InitVertType();
+
+        if (DebugMsg)
+            std::cout<<"* Setting Symmetry vertices"<<std::endl;
+        
+        InitSymmVert();
 
         if (DebugMsg)
             std::cout<<"* Setting Emitters type"<<std::endl;
@@ -1362,6 +1792,16 @@ private:
         std::reverse(Candidates.begin(),Candidates.end());
     }
 
+    void SortCandidatesBySymmetry()
+    {
+        for (size_t i = 0; i < Candidates.size(); i++)
+        {
+            ScalarType symmPriority = VertexFieldSymmetry<MeshType>::PathSymmetryEval(VFGraph, SymmVert, Candidates[i].PathNodes, Candidates[i].IsLoop);
+            Candidates[i].Priority = symmPriority;
+        }
+        std:sort(Candidates.begin(), Candidates.end());
+    }
+
     void AddChoosen(CandidateTrace &CurrC)
     {
         //        MeshType outMesh;
@@ -1419,6 +1859,7 @@ private:
             bool collide = CollideWithCandidateSet(VFGraph,Candidates[i],ChoosenPaths);
             if (collide)
             {
+                std::cout << "Collide with current.\n";
                 DiscardedCandidates.push_back(Candidates[i]);
                 continue;
             }
@@ -1505,7 +1946,8 @@ private:
     {
         std::vector<bool> To_Delete(Candidates.size(),false);
         int t0=clock();
-        SortCandidatesByDistances();
+        // SortCandidatesByDistances();
+        SortCandidatesBySymmetry();
         int t1=clock();
         time_sort+=t1-t0;
 
@@ -1540,6 +1982,8 @@ private:
             if (collide)
             {
                 To_Delete[i]=true;
+                if (DebugMsg)
+                    std::cout << "Warning: A candidate collide with choosen paths.\n";
                 continue;
             }
 
@@ -1548,7 +1992,8 @@ private:
                 if (!SplitSomeNonOKPartition(VFGraph,Candidates[i],Partitions,FacePartitions,PartitionType))
                 {
                     To_Delete[i]=true;
-                    //std::cout<<"Not Needed by Partition "<<std::endl;
+                    if (DebugMsg)
+                        std::cout<<"Not Needed by Partition "<<std::endl;
                     continue;
                 }
             }
@@ -1557,6 +2002,9 @@ private:
             AddChoosen(Candidates[i]);
             t1=clock();
             time_add+=t1-t0;
+
+            if (DebugMsg)
+                std::cout << "Successfully added a candidate.\n";
 
             //update distances
             t0=clock();
@@ -1803,6 +2251,17 @@ public:
         }
     }
 
+    std::vector<CoordType> GetRealBorderPos()
+    {
+        std::vector<CoordType> ret;
+        for (size_t i = 0; i < VFGraph.Mesh().vert.size(); i++)
+        {
+            if (VFGraph.IsRealBorderVert(i))
+                ret.push_back(VFGraph.Mesh().vert[i].P());
+        }
+        return ret;
+    }
+
 private:
 
 
@@ -1935,8 +2394,6 @@ private:
         //return false;
         return HasMerged;
     }
-
-
 
     void GetTracingConfiguration(const TypeVert FromType,
                                  const TypeVert ToType,
@@ -2252,6 +2709,84 @@ private:
             return;
         }
 
+        if (TracingType==TraceSymmetry)
+        {
+            //get concave nodes
+            std::vector<size_t> ConcaveNodes;
+            //GetConcaveNodes(ConcaveNodes);
+            GetNodesType(TVConcave,ConcaveNodes);
+
+            //narrow emitters
+            std::vector<size_t> NarrowEmittersNodes;
+            GetEmitterType(TVNarrow,NarrowEmittersNodes);
+
+            //narrow receivers
+            std::vector<size_t> NarrowReceiversNodes;
+            //GetNarrowReceivers(NarrowReceiversNodes);
+            GetReceiverType(TVNarrow,NarrowReceiversNodes);
+
+            for (size_t i=0;i<ConcaveNodes.size();i++)
+                MustDisable[ConcaveNodes[i]]=true;
+
+            for (size_t i=0;i<NarrowEmittersNodes.size();i++)
+                MustDisable[NarrowEmittersNodes[i]]=true;
+
+            for (size_t i=0;i<NarrowReceiversNodes.size();i++)
+                MustDisable[NarrowReceiversNodes[i]]=true;
+
+            //set symmetry emitter
+            std::vector<size_t> EmitterNodes;
+            GetEmitterType(TVSymmetry,EmitterNodes);
+            for (size_t i=0;i<EmitterNodes.size();i++)
+            {
+                if (MustDisable[EmitterNodes[i]])
+                {
+                    std::cout << "Warning: some of symmetry emitters were disabled\n";
+                    continue;
+                }
+                CanEmit[EmitterNodes[i]]=true;
+            }
+
+            // only one side be set emitter.
+            for (size_t i = 0; i < CanEmit.size(); i++)
+            {
+                if (CanEmit[i])
+                {
+                    int symmTwin = VFGraph.GetNodeSymmTwin(i);
+                    assert(symmTwin >= 0);
+                    if (CanEmit[symmTwin])
+                        CanEmit[symmTwin] = false;
+                    else
+                        CanEmit[i] = false;
+                }
+            }
+
+            //set symmetry receiver
+            // GetReceiverType(TVSymmetry,ReceiverNodes);
+            // for (size_t i=0;i<ReceiverNodes.size();i++)
+            // {
+            //     if (MustDisable[ReceiverNodes[i]])
+            //     {
+            //         std::cout << "Warning: some of symmetry receivers were disabled\n";
+            //         continue;
+            //     }
+            //     CanReceive[ReceiverNodes[i]]=true;
+            // }
+            
+            // also Flat nodes
+            std::vector<size_t> ReceiverNodes;
+            GetReceiverType(TVFlat,ReceiverNodes);
+            for (size_t i=0;i<ReceiverNodes.size();i++)
+            {
+                if (MustDisable[ReceiverNodes[i]])continue;
+                if (!VFGraph.IsOriginalBorderVert(VFGraph.NodeVertI(ReceiverNodes[i])) || 
+                    !VFGraph.IsRealBorderVert(VFGraph.NodeVertI(ReceiverNodes[i]))) continue;
+                CanReceive[ReceiverNodes[i]]=true;
+            }
+
+            return;
+        }
+
         if (TracingType==TraceLoop)
         {
             assert(FromType==TVInternal);
@@ -2438,7 +2973,7 @@ private:
         GetTracingConfiguration(FromType,ToType,TrType,CanEmit,CanReceive,MustDisable);
 
         VFGraph.SetAllActive();
-        VFGraph.SetDisabledNodes(MustDisable);
+        VFGraph.SetDisabledNodes(MustDisable);      // todo: no func
         if ((FromType==TVNarrow)||(ToType==TVNarrow)
                 ||(FromType==TVConcave)||(ToType==TVConcave))
             return(TraceFrom(FromType,ToType,TrType,CanEmit,CanReceive,Shortest,UsePartitionNeeds));
@@ -4693,6 +5228,32 @@ public:
         return (Size1-Size0);
     }
 
+    size_t TraceFromSymmetry(bool UsePartitionNeeds)
+    {
+        DebugMsg = true;
+        if (DebugMsg)
+            std::cout<<"**TRACING FROM SYMMETRY AXIS ***"<<std::endl;
+            
+        InitCandidates(TVSymmetry, TVFlat, TraceSymmetry);
+        // for (size_t i = 0; i < Candidates.size(); i++)
+        // {
+        //     for (size_t j = 0; j < Candidates[i].PathNodes.size(); j++)
+        //     {
+        //         std::cout << Candidates[i].PathNodes[j] << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
+        
+        size_t Size0=ChoosenPaths.size();
+        // how to choose path?
+        // ChooseGreedyByDistance(false,UsePartitionNeeds);
+        ChooseGreedyByLength(false,UsePartitionNeeds);
+        size_t Size1=ChoosenPaths.size();
+        assert(Size1>=Size0);
+        std::cout << "Traced " << Size1-Size0 << " symmetry paths.\n";
+        return Size1-Size0;
+    }
+
     size_t BatchRemovalOnMesh(bool PreRemoveStep=true)//bool do_smooth=true)
     {
         //        size_t Size0=ChoosenPaths.size();
@@ -4910,6 +5471,11 @@ public:
         std::cout<<"END REMOVE DARTS"<<std::endl;
 
 
+    }
+
+    size_t JoinSymmetryStep()
+    {
+        
     }
 
     size_t BatchRemovalMetaMesh(bool PreRemoveStep=true)//bool do_smooth=true)
@@ -5286,7 +5852,7 @@ public:
 
         if (DebugMsg)
             std::cout<<"Before Expansion there are "<<Candidates.size()<<" candidates"<<std::endl;
-
+        
         ExpandCandidates();
 
         if (DebugMsg)

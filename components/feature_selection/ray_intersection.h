@@ -1,7 +1,7 @@
 #ifndef RAY_INTERSECTION_H
 #define RAY_INTERSECTION_H
 
-#include "triangle_mesh_type.h"
+#include <vcg/complex/complex.h>
 
 template<typename T>
 class Ray
@@ -24,7 +24,7 @@ public:
 
 
 template<typename T>
-struct Intersection
+struct MyIntersection
 {        
     T dist;
     int edge, idx;
@@ -32,7 +32,7 @@ struct Intersection
     vcg::Point3<T> pos;
     vcg::Point3<T> bary;
 
-    Intersection(): happened(false), pos(), bary(), dist(std::numeric_limits<T>::max()), idx(-1), edge(-1) {  pos.SetZero(); bary.SetZero(); }
+    MyIntersection(): happened(false), pos(), bary(), dist(std::numeric_limits<T>::max()), idx(-1), edge(-1) {  pos.SetZero(); bary.SetZero(); }
 };
 
 #endif
