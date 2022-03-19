@@ -155,76 +155,76 @@ int main(int argc, char *argv[])
     }
 
 
-    std::cout<<"Loading:"<<PathM.c_str()<<std::endl;
+    // std::cout<<"Loading:"<<PathM.c_str()<<std::endl;
 
-    bool loaded=tri_mesh.LoadTriMesh(PathM,allQuad);
-    tri_mesh.UpdateDataStructures();
+    // bool loaded=tri_mesh.LoadTriMesh(PathM,allQuad);
+    // tri_mesh.UpdateDataStructures();
 
-    if (!loaded)
-    {
-        std::cout<<"Mesh Filename Wrong"<<std::endl;
-        exit(0);
-    }
-    std::cout<<"Loaded "<<tri_mesh.fn<<" faces and "<<tri_mesh.vn<<" vertices"<<std::endl;
+    // if (!loaded)
+    // {
+    //     std::cout<<"Mesh Filename Wrong"<<std::endl;
+    //     exit(0);
+    // }
+    // std::cout<<"Loaded "<<tri_mesh.fn<<" faces and "<<tri_mesh.vn<<" vertices"<<std::endl;
 
-    std::cout<<"1- REMESH AND FIELD"<<std::endl;
+    // std::cout<<"1- REMESH AND FIELD"<<std::endl;
 
-    typename MeshPrepocess<FieldTriMesh>::BatchParam BPar;
-    BPar.DoRemesh=DoRemesh;
-    BPar.feature_erode_dilate=4;
-    BPar.remesher_aspect_ratio=0.3;
-    BPar.remesher_iterations=15;
-    BPar.remesher_termination_delta=10000;
-    BPar.SharpFactor=6;
-    BPar.sharp_feature_thr=SharpAngle;
-    BPar.surf_dist_check=true;
-    BPar.UpdateSharp=(!HasFeature);
+    // typename MeshPrepocess<FieldTriMesh>::BatchParam BPar;
+    // BPar.DoRemesh=DoRemesh;
+    // BPar.feature_erode_dilate=4;
+    // BPar.remesher_aspect_ratio=0.3;
+    // BPar.remesher_iterations=15;
+    // BPar.remesher_termination_delta=10000;
+    // BPar.SharpFactor=6;
+    // BPar.sharp_feature_thr=SharpAngle;
+    // BPar.surf_dist_check=true;
+    // BPar.UpdateSharp=(!HasFeature);
 
-    typename vcg::tri::FieldSmoother<FieldTriMesh>::SmoothParam FieldParam;
-    FieldParam.alpha_curv=0.3;
-    FieldParam.curv_thr=0.8;
+    // typename vcg::tri::FieldSmoother<FieldTriMesh>::SmoothParam FieldParam;
+    // FieldParam.alpha_curv=0.3;
+    // FieldParam.curv_thr=0.8;
 
-    if (HasFeature)
-    {
-        bool loaded=tri_mesh.LoadSharpFeatures(PathS);
-        if (!loaded)
-        {
-            std::cout<<"ERROR: Wrong Sharp Feature File"<<std::endl;
-            exit(0);
-        }
-        std::cout<<"Sharp Feature Length:"<<tri_mesh.SharpLenght()<<std::endl;
-    }
-    else if (HasTexture)
-    {
-        std::cout<<"Loading texture "<<PathT<<std::endl;
-        BPar.has_texture=true;
-        cv::flip(cv::imread(PathT, cv::ImreadModes::IMREAD_COLOR), BPar.tex_img, 0);
-        std::cout<<"Texture loaded."<<std::endl;
-    }
-    if (!HasField)
-    {
-        // allFeature(tri_mesh);
-        // size_t indexExt=PathM.find_last_of(".");
-        // tri_mesh.SaveSharpFeatures(PathM.substr(0,indexExt)+".sharp");
+    // if (HasFeature)
+    // {
+    //     bool loaded=tri_mesh.LoadSharpFeatures(PathS);
+    //     if (!loaded)
+    //     {
+    //         std::cout<<"ERROR: Wrong Sharp Feature File"<<std::endl;
+    //         exit(0);
+    //     }
+    //     std::cout<<"Sharp Feature Length:"<<tri_mesh.SharpLenght()<<std::endl;
+    // }
+    // else if (HasTexture)
+    // {
+    //     std::cout<<"Loading texture "<<PathT<<std::endl;
+    //     BPar.has_texture=true;
+    //     cv::flip(cv::imread(PathT, cv::ImreadModes::IMREAD_COLOR), BPar.tex_img, 0);
+    //     std::cout<<"Texture loaded."<<std::endl;
+    // }
+    // if (!HasField)
+    // {
+    //     // allFeature(tri_mesh);
+    //     // size_t indexExt=PathM.find_last_of(".");
+    //     // tri_mesh.SaveSharpFeatures(PathM.substr(0,indexExt)+".sharp");
 
-        // tri_mesh.UpdateDataStructures();
-        // typename AutoRemesher<FieldTriMesh>::Params RemPar;
-        // RemPar.iterations   = BPar.remesher_iterations;
-        // RemPar.targetAspect = BPar.remesher_aspect_ratio;
-        // RemPar.targetDeltaFN = BPar.remesher_termination_delta;
-        // RemPar.surfDistCheck = BPar.surf_dist_check;
-        // AutoRemesher<FieldTriMesh>::RemeshAdapt(tri_mesh,RemPar);
-        // MeshPrepocess<FieldTriMesh>::SolveGeometricArtifacts(tri_mesh);
-        // MeshPrepocess<FieldTriMesh>::RefineIfNeeded(tri_mesh);
+    //     // tri_mesh.UpdateDataStructures();
+    //     // typename AutoRemesher<FieldTriMesh>::Params RemPar;
+    //     // RemPar.iterations   = BPar.remesher_iterations;
+    //     // RemPar.targetAspect = BPar.remesher_aspect_ratio;
+    //     // RemPar.targetDeltaFN = BPar.remesher_termination_delta;
+    //     // RemPar.surfDistCheck = BPar.surf_dist_check;
+    //     // AutoRemesher<FieldTriMesh>::RemeshAdapt(tri_mesh,RemPar);
+    //     // MeshPrepocess<FieldTriMesh>::SolveGeometricArtifacts(tri_mesh);
+    //     // MeshPrepocess<FieldTriMesh>::RefineIfNeeded(tri_mesh);
         
-        MeshPrepocess<FieldTriMesh>::BatchProcess(tri_mesh, BPar, FieldParam);
-    }
-    else
-    {
-        tri_mesh.LoadField(PathField.c_str());
-    }
+    //     MeshPrepocess<FieldTriMesh>::BatchProcess(tri_mesh, BPar, FieldParam);
+    // }
+    // else
+    // {
+    //     tri_mesh.LoadField(PathField.c_str());
+    // }
 
-    MeshPrepocess<FieldTriMesh>::SaveAllData(tri_mesh,PathM);
+    // MeshPrepocess<FieldTriMesh>::SaveAllData(tri_mesh,PathM);
 
     std::cout<<"2- TRACING"<<std::endl;
 
@@ -243,6 +243,10 @@ int main(int argc, char *argv[])
     PathS.append("_rem.sharp");
     std::cout<<"Loading Sharp F:"<<PathS.c_str()<<std::endl;
 
+    std::string PathSymm=pathProject;
+    PathSymm.append("_rem.symm");
+    std::cout<<"Loading Symmetry Axis:"<<PathSymm.c_str()<<std::endl;
+
     //MESH LOAD
     TraceMesh trace_mesh;
     printf("Loading the mesh \n");
@@ -258,6 +262,11 @@ int main(int argc, char *argv[])
     //SHARP LOAD
     bool loadedFeatures=trace_mesh.LoadSharpFeatures(PathS);
     assert(loadedFeatures);
+
+    //SYMM LOAD
+    bool loadedSymmetry=trace_mesh.LoadSymmetryAxis(PathSymm);
+    if (!loadedSymmetry) std::cout << "Symmetry Axis loading failed!\n";
+
     trace_mesh.SolveGeometricIssues();
     trace_mesh.UpdateSharpFeaturesFromSelection();
 
@@ -276,6 +285,7 @@ int main(int argc, char *argv[])
     bool final_removal=true;
     bool meta_mesh_collapse=true;
     bool force_split=false;
+    bool force_symmetry=true;
     PTr.sample_ratio=0.01;
     PTr.CClarkability=1;
     PTr.split_on_removal=true;
@@ -288,7 +298,7 @@ int main(int argc, char *argv[])
 
     //TRACING
     PTr.InitTracer(Drift,false);
-    RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,true,meta_mesh_collapse,force_split,true,false);
+    RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,force_symmetry,true,meta_mesh_collapse,force_split,true,false);
     // todo: not finished yet.
     PTr.SmoothPatches();
     SaveAllData(PTr,pathProject,0,false,false);

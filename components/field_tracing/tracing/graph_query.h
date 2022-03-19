@@ -525,7 +525,7 @@ public:
         assert(TraceN0.size()>1);
         assert(TraceN1.size()>1);
 
-        std::cout << "------ Collide Test ------\n";
+        // std::cout << "------ Collide Test ------\n";
 
         //quick rejection test based on vertex indexes
         vcg::tri::UnMarkAll<MeshType>(VFGraph.Mesh());
@@ -545,7 +545,7 @@ public:
         }
         if (SameV.size()==0)return false;
 
-        std::cout << "- Have shared vertices -\n";
+        // std::cout << "- Have shared vertices -\n";
 
         //then check if there is the same geometric edge
         size_t Limit0=TraceN0.size()-1;
@@ -586,7 +586,7 @@ public:
             }
         }
 
-        std::cout << "- Dont have share edges -\n"; 
+        // std::cout << "- Dont have share edges -\n"; 
         
         //first check if there is the same node (or opposite in M2)
         VFGraph.UnMarkAll();
@@ -615,7 +615,7 @@ public:
             if (VFGraph.IsMarked(NodeN1))return true;
         }
 
-        std::cout << "- Dont collide tangent node -\n";
+        // std::cout << "- Dont collide tangent node -\n";
 
         return (CollideSubSequence(VFGraph,TraceN0,TraceN1,IsLoopTr0,IsLoopTr1,SameV));
     }
@@ -852,7 +852,7 @@ public:
         for (size_t i=0;i<SParam.StartNode.size();i++)
         {
             size_t IndexN0=SParam.StartNode[i];
-            assert(VFGraph.IsActive(IndexN0));
+            // assert(VFGraph.IsActive(IndexN0));
             VFGraph.Mark(IndexN0);
             VFGraph.Distance(IndexN0)=0;
             VFGraph.Jumps(IndexN0)=0;
@@ -1036,21 +1036,21 @@ public:
         bool Traced=ShortestPath(VFGraph,SParam,Sequence);
         if (!Traced)
         {
-            std::cout << "-----Expande Failed-----\n";
-            std::cout << "Current " << IndexN0 << " has neighbours: ";
-            std::vector<size_t> neighs;
-            VFGraph.GetNodeNeigh(IndexN0, neighs);
-            bool isFound = false, isDirect = false, isActive;
-            for (size_t i = 0; i < neighs.size(); i++)
-            {
-                std::cout << neighs[i] << " ";
-                if (neighs[i] == IndexN1)
-                {
-                    isFound = true;
-                    isDirect = VFGraph.DirectNeigh(IndexN0, i);
-                }
-            }
-            std::cout << "\nTarget " << IndexN1 << " IsNeighbor:" << isFound << ", IsDirect:" << isDirect << ", IsActive:" << VFGraph.IsActive(IndexN1) << std::endl;
+            // std::cout << "-----Expande Failed-----\n";
+            // std::cout << "Current " << IndexN0 << " has neighbours: ";
+            // std::vector<size_t> neighs;
+            // VFGraph.GetNodeNeigh(IndexN0, neighs);
+            // bool isFound = false, isDirect = false, isActive;
+            // for (size_t i = 0; i < neighs.size(); i++)
+            // {
+            //     std::cout << neighs[i] << " ";
+            //     if (neighs[i] == IndexN1)
+            //     {
+            //         isFound = true;
+            //         isDirect = VFGraph.DirectNeigh(IndexN0, i);
+            //     }
+            // }
+            // std::cout << "\nTarget " << IndexN1 << " IsNeighbor:" << isFound << ", IsDirect:" << isDirect << ", IsActive:" << VFGraph.IsActive(IndexN1) << std::endl;
             
             return false;
         }

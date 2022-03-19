@@ -690,6 +690,7 @@ void RecursiveProcess(TracerType &PTr,
                       const typename TracerType::ScalarType Drift,
                       bool onlyneeded,
                       bool finalremoval,
+                      bool force_symmetry,
                       bool PreRemoveStep=true,
                       bool UseMetamesh=true,
                       bool ForceMultiSplit=false,
@@ -731,15 +732,15 @@ void RecursiveProcess(TracerType &PTr,
     if ((NumE0==0)||(NumE1==0))
     {
         //PTr.DebugMsg=true;
-        PTr.BatchAddLoops(false,onlyneeded,false,false);
+        PTr.BatchAddLoops(false,onlyneeded,false,false,force_symmetry);
     }
     else
     {
-        PTr.BatchAddLoops(false,onlyneeded,ForceMultiSplit,false);
+        PTr.BatchAddLoops(false,onlyneeded,ForceMultiSplit,false,force_symmetry);
     }
     //if no patch has been created than trace loops
     if ((ForceMultiSplit==true)&&(PTr.Partitions.size()==0))
-        PTr.BatchAddLoops(false,onlyneeded,false,false);
+        PTr.BatchAddLoops(false,onlyneeded,false,false,force_symmetry);
 
     int t1=clock();
     Time_FirstTrace+=t1-t0;

@@ -880,7 +880,7 @@ bool MergeSymmetryPath(VertexFieldGraph<MeshType>& VFGraph,
     }
     else 
     {
-        std::cout << "Reverse failed.\n";
+        // std::cout << "Reverse failed.\n";
         return false;
     }
 }
@@ -1061,7 +1061,7 @@ bool TraceSymmetryPath(VertexFieldGraph<MeshType>& VFGraph,
             return true;
     }
 
-    std::cout << StartingNode << ": All failed.\n";
+    // std::cout << StartingNode << ": All failed.\n";
 
 
     // VFGraph.SetActive(VFGraph.TangentNode(StartingNode), true);
@@ -1627,14 +1627,14 @@ private:
             //bool expanded=ExpandPath(Candidates[i].PathNodes,Candidates[i].IsLoop);
             bool expanded=VertexFieldQuery<MeshType>::ExpandPath(VFGraph,Candidates[i].PathNodes,
                                                                  Candidates[i].IsLoop,Drift);
-            if (!expanded)
-                std::cout << "Path " << i << " expanded false.\n";
+            // if (!expanded)
+            //     std::cout << "Path " << i << " expanded false.\n";
             //std::cout<<"SIZE "<<Candidates[i].PathNodes.size()<<std::endl;
             bool SelfInt=VertexFieldQuery<MeshType>::SelfIntersect(VFGraph,Candidates[i].PathNodes,Candidates[i].IsLoop);
             if (SelfInt){
                 SelfIntN++;
                 DiscardedCandidates.push_back(Candidates[i]);
-                std::cout << "Path " << i << " self intersect.\n";
+                // std::cout << "Path " << i << " self intersect.\n";
                 continue;
             }
             if (expanded)
@@ -1826,6 +1826,51 @@ private:
         AddEdgeL(CurrC);
     }
 
+    void ChooseGreedyBySymmetry(bool UseVertNeeds=false,
+                                bool UsePartitionNeeds=false)
+    {
+        SortCandidatesBySymmetry();
+
+        for (size_t i = 0; i < Candidates.size(); i++)
+        {
+            std::vector<size_t> CurrTrace = Candidates[i].PathNodes;
+
+            size_t IndexN0=CurrTrace[0];
+            size_t IndexN1=CurrTrace.back();
+            size_t IndexV0=VertexFieldGraph<MeshType>::NodeVertI(IndexN0);
+            size_t IndexV1=VertexFieldGraph<MeshType>::NodeVertI(IndexN1);
+            if ((UseVertNeeds)&&((VerticesNeeds[IndexV0]==0)&&(VerticesNeeds[IndexV1]==0)))
+            {
+                DiscardedCandidates.push_back(Candidates[i]);
+                continue;
+            }
+
+            bool collide = CollideWithCandidateSet(VFGraph,Candidates[i],ChoosenPaths);
+            if (collide)
+            {
+                // std::cout << "Collide with current.\n";
+                DiscardedCandidates.push_back(Candidates[i]);
+                continue;
+            }
+            
+            if ((UsePartitionNeeds)&&
+                (!SplitSomeNonOKPartition(VFGraph,Candidates[i],Partitions,FacePartitions,PartitionType)))
+            {
+                DiscardedCandidates.push_back(Candidates[i]);
+                continue;
+            }
+
+            AddChoosen(Candidates[i]);
+            
+            if (UsePartitionNeeds)
+            {
+                LazyUpdatePartitions();
+            }
+
+        }
+        
+    }
+
     void ChooseGreedyByLength(bool UseVertNeeds=true,
                               bool UsePartitionNeeds=false)
     {
@@ -1859,7 +1904,7 @@ private:
             bool collide = CollideWithCandidateSet(VFGraph,Candidates[i],ChoosenPaths);
             if (collide)
             {
-                std::cout << "Collide with current.\n";
+                // std::cout << "Collide with current.\n";
                 DiscardedCandidates.push_back(Candidates[i]);
                 continue;
             }
@@ -1946,8 +1991,8 @@ private:
     {
         std::vector<bool> To_Delete(Candidates.size(),false);
         int t0=clock();
-        // SortCandidatesByDistances();
-        SortCandidatesBySymmetry();
+        SortCandidatesByDistances();
+        // SortCandidatesBySymmetry();
         int t1=clock();
         time_sort+=t1-t0;
 
@@ -5202,7 +5247,7 @@ public:
 
     }
 
-    size_t TraceLoops(bool UsePartitionNeeds)
+    size_t TraceLoops(bool UsePartitionNeeds, bool ForceSymmetry=false)
     {
 
         if (DebugMsg)
@@ -5217,7 +5262,10 @@ public:
 
         InitCandidates(TVInternal,TVInternal,TraceLoop);
         size_t Size0=ChoosenPaths.size();
-        ChooseGreedyByDistance(false,UsePartitionNeeds);
+        if (!ForceSymmetry)
+            ChooseGreedyByDistance(false,UsePartitionNeeds);
+        else
+            ChooseGreedyBySymmetry(false,UsePartitionNeeds);
         //        if(UpdatePartition)
         //        {
         //            UpdatePartitionsFromChoosen();
@@ -5229,11 +5277,7 @@ public:
     }
 
     size_t TraceFromSymmetry(bool UsePartitionNeeds)
-    {
-        DebugMsg = true;
-        if (DebugMsg)
-            std::cout<<"**TRACING FROM SYMMETRY AXIS ***"<<std::endl;
-            
+    {       
         InitCandidates(TVSymmetry, TVFlat, TraceSymmetry);
         // for (size_t i = 0; i < Candidates.size(); i++)
         // {
@@ -5244,12 +5288,12 @@ public:
         //     std::cout << std::endl;
         // }
         
-        size_t Size0=ChoosenPaths.size();
+        size_t Size0 = ChoosenPaths.size();
         // how to choose path?
         // ChooseGreedyByDistance(false,UsePartitionNeeds);
-        ChooseGreedyByLength(false,UsePartitionNeeds);
-        size_t Size1=ChoosenPaths.size();
-        assert(Size1>=Size0);
+        ChooseGreedyBySymmetry(false,UsePartitionNeeds);
+        size_t Size1 = ChoosenPaths.size();
+        assert(Size1 >= Size0);
         std::cout << "Traced " << Size1-Size0 << " symmetry paths.\n";
         return Size1-Size0;
     }
@@ -5695,7 +5739,8 @@ public:
     void BatchAddLoops(bool ForceReceivers,
                        bool AddOnlyNeeded,
                        bool OnlyNarrowConcave,
-                       bool force_always)
+                       bool force_always,
+                       bool force_symmetry=false)
     {
         //might need to resample
         //other disconnected components
@@ -5747,12 +5792,23 @@ public:
         if (OnlyNarrowConcave)
             return;
 
+        force_symmetry  = force_symmetry && Mesh().HasSymmetryAxis;
+        if (force_symmetry)
+        {
+            if (DebugMsg) std::cout << "**TRACING FROM SYMMETRY AXIS ***" << std::endl;
+            size_t numAddedSymmetryPaths = TraceFromSymmetry(AddOnlyNeeded);
+            if (DebugMsg) std::cout << "done" << std::endl;
+
+            if (DebugMsg) std::cout << "Num Choosen " << ChoosenPaths.size() << std::endl;
+            if (AddOnlyNeeded && numAddedSymmetryPaths>0) LazyUpdatePartitions();
+        }
+
         //        if (DebugMsg)
         if (PrioMode==PrioModeLoop)
         {
             if (DebugMsg)
                 std::cout<<"**TRACING LOOPS ***"<<std::endl;
-            size_t numAddedLoops=TraceLoops(AddOnlyNeeded);
+            size_t numAddedLoops=TraceLoops(AddOnlyNeeded, force_symmetry);
 
             if (DebugMsg)
                 std::cout<<"done"<<std::endl;
@@ -5786,7 +5842,7 @@ public:
 
             if (DebugMsg)
                 std::cout<<"**TRACING LOOPS ***"<<std::endl;
-            TraceLoops(AddOnlyNeeded);
+            TraceLoops(AddOnlyNeeded, force_symmetry);
 
             if (DebugMsg)
                 std::cout<<"done"<<std::endl;
