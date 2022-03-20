@@ -78,7 +78,9 @@ struct SplitLev : public   std::unary_function<vcg::face::Pos<FaceType> ,typenam
     vcg::TexCoord2<ScalarType> WedgeInterp(vcg::TexCoord2<ScalarType> &t0,
                                            vcg::TexCoord2<ScalarType> &t1)
     {
-        return (vcg::TexCoord2<ScalarType>(0,0));
+        vcg::TexCoord2<ScalarType> TexMid;
+        TexMid.P() = (t0.P() + t1.P()) / 2;
+        return TexMid;
     }
 
     SplitLev(std::map<CoordPair,CoordType> *_SplitOps){SplitOps=_SplitOps;}
@@ -345,18 +347,46 @@ class MeshPrepocess
             CoordType NewPos=(mesh.face[IndexF].P(0)+
                               mesh.face[IndexF].P(1)+
                               mesh.face[IndexF].P(2))/3;
+            // wedge tex
+            vcg::Point2<ScalarType> TexPos[4];
+            if (vcg::tri::HasPerWedgeTexCoord(mesh))
+            {
+                for (size_t i = 0; i < 3; i++)
+                    TexPos[i] = mesh.face[IndexF].WT(i).P();
+                
+                 TexPos[3] = (mesh.face[IndexF].WT(0).P()+
+                              mesh.face[IndexF].WT(1).P()+
+                              mesh.face[IndexF].WT(2).P())/3;
+            }
+            
             vcg::tri::Allocator<MeshType>::AddVertex(mesh,NewPos);
             VertexType *V0=mesh.face[IndexF].V(0);
             VertexType *V1=mesh.face[IndexF].V(1);
             VertexType *V2=mesh.face[IndexF].V(2);
             VertexType *V3=&mesh.vert.back();
             mesh.face[IndexF].V(2)=V3;
+            if (vcg::tri::HasPerWedgeTexCoord(mesh))
+            {
+                mesh.face[IndexF].WT(2).P() = TexPos[3];
+            }
             vcg::tri::Allocator<MeshType>::AddFace(mesh,V1,V2,V3);
             mesh.face.back().PD1()=PD1;
             mesh.face.back().PD2()=PD2;
+            if (vcg::tri::HasPerWedgeTexCoord(mesh))
+            {
+                mesh.face.back().WT(0).P()=TexPos[1];
+                mesh.face.back().WT(1).P()=TexPos[2];
+                mesh.face.back().WT(2).P()=TexPos[3];
+            }
             vcg::tri::Allocator<MeshType>::AddFace(mesh,V2,V0,V3);
             mesh.face.back().PD1()=PD1;
             mesh.face.back().PD2()=PD2;
+            if (vcg::tri::HasPerWedgeTexCoord(mesh))
+            {
+                mesh.face.back().WT(0).P()=TexPos[2];
+                mesh.face.back().WT(1).P()=TexPos[0];
+                mesh.face.back().WT(2).P()=TexPos[3];
+            }
         }
         mesh.UpdateDataStructures();
         mesh.SetFeatureFromTable();
@@ -734,7 +764,7 @@ public:
         }
         else
         {
-            assert(TextureProcess::SegmentTexture(mesh, BPar.tex_img, BPar.texture_diff));
+            assert(TextureProcess<MeshType>::SegmentTexture(mesh, BPar.tex_img, BPar.texture_diff));
         }
         mesh.ErodeDilate(BPar.feature_erode_dilate);
     }
@@ -781,7 +811,7 @@ public:
             // FaceEdgeSelInvert(mesh);
 
             //AutoRemesher<MeshType>::Remesh2(mesh,RemPar);
-            AutoRemesher<MeshType>::RemeshAdapt(mesh,RemPar);
+            AutoRemesher<MeshType>::RemeshAdapt(mesh,RemPar,vcg::tri::HasPerWedgeTexCoord(mesh));
 
             // FaceEdgeSelInvert(mesh);
 

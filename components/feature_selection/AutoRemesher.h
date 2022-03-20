@@ -358,7 +358,7 @@ public:
 
     //for big meshes disabling par.surfDistCheck provides big perf improvements, sacrificing result accuracy
     //static std::shared_ptr<Mesh> Remesh (Mesh & m, Params & par)
-    static void RemeshAdapt(Mesh & m, Params & par)
+    static void RemeshAdapt(Mesh & m, Params & par, bool hasWT=false)
     {
 
         vcg::tri::UpdateBounding<Mesh>::Box(m);
@@ -395,14 +395,14 @@ public:
 
 
         std::cout << "Before Remeshing - faces: " << m.FN() << " quality: " <<  computeAR(m) << std::endl;
-        vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para);
+        vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para, 0, hasWT);
         std::cout << "After Iter 0 - faces: " << m.FN() << " quality: " <<  computeAR(m) << std::endl;
 
 
         const ScalarType thr = 0.01;
 
         //vcg::tri::UpdateSelection<Mesh>::VertexClear(m);
-        collapseSurvivingMicroEdges(m,thr);
+        // collapseSurvivingMicroEdges(m,thr);
 
         // would affect uv
         // UpdateCoherentSharp(m,par);
@@ -411,7 +411,7 @@ public:
         para.smoothFlag   = true;
         para.maxSurfDist = m.bbox.Diag() / 2500.;
 
-        vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para);
+        vcg::tri::IsotropicRemeshing<Mesh>::Do(m, para, 0, hasWT);
 
         m.UpdateDataStructures();
 

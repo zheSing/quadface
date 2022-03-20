@@ -120,7 +120,7 @@ bool has_texture=false;
 //size_t ErodeDilateSteps=4;
 
 bool do_remesh=true;
-bool do_init_feature=true;
+bool do_init_feature=false;
 int remesher_iterations=15;
 ScalarType remesher_aspect_ratio=0.3;
 int remesher_termination_delta=10000;

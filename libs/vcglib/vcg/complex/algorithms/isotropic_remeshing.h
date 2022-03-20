@@ -252,7 +252,7 @@ private:
 
 public:
 
-    static void Do(MeshType &toRemesh, Params & params, vcg::CallBackPos * cb=0)
+    static void Do(MeshType &toRemesh, Params & params, vcg::CallBackPos * cb=0, bool hasWT=false)
     {
         MeshType toProjectCopy;
         tri::UpdateBounding<MeshType>::Box(toRemesh);
@@ -260,9 +260,9 @@ public:
 
         tri::Append<MeshType,MeshType>::MeshCopy(toProjectCopy, toRemesh);
 
-        Do(toRemesh,toProjectCopy,params,cb);
+        Do(toRemesh,toProjectCopy,params,cb,hasWT);
     }
-    static void Do(MeshType &toRemesh, MeshType &toProject, Params & params, vcg::CallBackPos * cb=0)
+    static void Do(MeshType &toRemesh, MeshType &toProject, Params & params, vcg::CallBackPos * cb=0, bool hasWT=false)
     {
         assert(&toRemesh != &toProject);
         params.stat.Reset();
@@ -314,7 +314,7 @@ public:
                 ImproveValence(toRemesh, params);
 
             if(params.smoothFlag)
-                ImproveByLaplacian(toRemesh, params);
+                ImproveByLaplacian(toRemesh, params, hasWT);
 
             if(params.projectFlag)
                 ProjectToSurface(toRemesh, params);
@@ -1269,14 +1269,21 @@ private:
         }
     }
 
-    static void VertexCoordPlanarLaplacian(MeshType &m, Params & params, int step, ScalarType delta = 0.2)
+    static void VertexCoordPlanarLaplacian(MeshType &m, Params & params, int step, ScalarType delta = 0.2, bool hasWT=false)
     {
         typename vcg::tri::Smooth<MeshType>::LaplacianInfo lpz(CoordType(0, 0, 0), 0);
         SimpleTempData<typename MeshType::VertContainer, typename vcg::tri::Smooth<MeshType>::LaplacianInfo> TD(m.vert, lpz);
+        SimpleTempData<typename MeshType::VertContainer, typename vcg::tri::Smooth<MeshType>::LaplacianInfo> WTTD(m.vert, lpz);
+        std::vector<CoordType> WedgeTex(m.vert.size());
         for (int i = 0; i < step; ++i)
         {
             TD.Init(lpz);
-            vcg::tri::Smooth<MeshType>::AccumulateLaplacianInfo(m, TD, false);
+            WTTD.Init(lpz);
+            if (!hasWT)
+                vcg::tri::Smooth<MeshType>::AccumulateLaplacianInfo(m, TD, false);
+            else
+                vcg::tri::Smooth<MeshType>::AccumulateLaplacianInfo(m, TD, WTTD, false);
+
             // First normalize the AccumulateLaplacianInfo
             for (auto vi = m.vert.begin(); vi != m.vert.end(); ++vi)
                 if (!(*vi).IsD() && TD[*vi].cnt > 0)
@@ -1284,6 +1291,32 @@ private:
                     if ((*vi).IsS())
                         TD[*vi].sum = ((*vi).P() + TD[*vi].sum) / (TD[*vi].cnt + 1);
                 }
+
+            if (hasWT)
+            {
+                for (auto fi = m.face.begin() ; fi != m.face.end(); fi++)
+                {
+                    for (size_t j = 0; j < 3; j++)
+                        if (fi->V(j)->IsS())
+                        {
+                            size_t IndexV = vcg::tri::Index(m, fi->V(j));
+                            WedgeTex[IndexV] = CoordType(fi->WT(j).P()[0], fi->WT(j).P()[1], 0);
+                        }
+                }
+                
+                int count=0;
+                for (auto vi = m.vert.begin(); vi != m.vert.end(); ++vi)
+                {
+                    if (!(*vi).IsD() && WTTD[*vi].cnt > 0)
+                    {
+                        if ((*vi).IsS())
+                            WTTD[*vi].sum = (WedgeTex[count] + WTTD[*vi].sum) / (WTTD[*vi].cnt + 1);
+                    }
+                    count++;
+                }
+                    
+            }
+                
 
 //            for (auto fi = m.face.begin(); fi != m.face.end(); ++fi)
 //            {
@@ -1313,13 +1346,34 @@ private:
 //                }
 //            }
 
+            int count=0;
             for (auto vi = m.vert.begin(); vi != m.vert.end(); ++vi)
+            {
                 if (!(*vi).IsD() && TD[*vi].cnt > 0)
                 {
                     std::vector<CoordType> newPos(1, TD[*vi].sum);
                     if ((*vi).IsS() && testHausdorff(*params.mProject, params.grid, newPos, params.maxSurfDist))
+                    {
                         (*vi).P() = (*vi).P() * (1-delta) + TD[*vi].sum * (delta);
+                        if (hasWT) WedgeTex[count] = WedgeTex[count]*(1-delta) + WTTD[*vi].sum*delta;
+                    }
                 }
+                count++;
+            }
+
+            if (hasWT)
+            {
+                for (auto fi = m.face.begin() ; fi != m.face.end(); fi++)
+                {
+                    for (size_t j = 0; j < 3; j++)
+                        if (fi->V(j)->IsS())
+                        {
+                            size_t IndexV = vcg::tri::Index(m, fi->V(j));
+                            fi->WT(j).P() = vcg::Point2<ScalarType>(WedgeTex[IndexV][0], WedgeTex[IndexV][1]);
+                        }
+                }
+            }
+                
         } // end step
     }
 
@@ -1331,7 +1385,8 @@ private:
           * the set of internal vertices to the selection and we combine it in and with
           * the vertexes not on border or creases
         */
-    static void ImproveByLaplacian(MeshType &m, Params params)
+    // SMOOTH TODO
+    static void ImproveByLaplacian(MeshType &m, Params params, bool hasWT=false)
     {
         SelectionStack<MeshType> ss(m);
 
@@ -1349,7 +1404,7 @@ private:
             ss.popAnd();
         }
 
-        VertexCoordPlanarLaplacian(m, params, 1);
+        VertexCoordPlanarLaplacian(m, params, 1, 0.2, hasWT);
 
         tri::UpdateSelection<MeshType>::VertexClear(m);
 
