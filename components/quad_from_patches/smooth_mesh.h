@@ -50,7 +50,8 @@ class BasicVertex : public vcg::Vertex<
         MyBasicTypes,
         vcg::vertex::Normal3f,
         vcg::vertex::Coord3f,
-        vcg::vertex::BitFlags>{};
+        vcg::vertex::BitFlags,
+        vcg::vertex::TexCoord2f>{};
 
 class BasicEdge : public vcg::Edge<
         MyBasicTypes,
@@ -76,6 +77,7 @@ void ExtractEdgeMesh(const TriangleMeshType &triMesh,
     //    typedef typename TriangleMeshType::FaceType TriFaceType;
     //    typedef typename TriangleMeshType::ScalarType TriScalarType;
     typedef typename TriangleMeshType::CoordType CoordType;
+    typedef typename BasicMesh::VertexIterator VertexIterator;
 
     EdgeMesh.Clear();
     for (size_t i=0;i<features.size();i++)
@@ -84,7 +86,12 @@ void ExtractEdgeMesh(const TriangleMeshType &triMesh,
         size_t IndexE=features[i].second;
         CoordType P0=triMesh.face[IndexF].cP0(IndexE);
         CoordType P1=triMesh.face[IndexF].cP1(IndexE);
-        vcg::tri::Allocator<BasicMesh>::AddEdge(EdgeMesh,P0,P1);
+        VertexIterator vi = vcg::tri::Allocator<BasicMesh>::AddVertices(EdgeMesh, 2);
+        vi->P() = P0;
+        vi->T().P() = triMesh.face[IndexF].WT(IndexE).P();
+        (vi+1)->P() = P1;
+        (vi+1)->T().P() = triMesh.face[IndexF].WT((IndexE+1)%3).P();
+        vcg::tri::Allocator<BasicMesh>::AddEdge(EdgeMesh,&(*vi),&(*(vi+1)));
     }
     vcg::tri::Clean<BasicMesh>::RemoveDuplicateVertex(EdgeMesh);
     vcg::tri::Clean<BasicMesh>::RemoveDuplicateEdge(EdgeMesh);
@@ -228,13 +235,17 @@ template <class PolyMeshType>
 void LaplacianPos(const PolyMeshType &poly_mesh,
                   const typename PolyMeshType::ScalarType Damp,
                   std::vector<typename PolyMeshType::CoordType> &TargetPos,
+                //   std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& PolyTex,
+                //   std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& TargetTex,
                   bool only_sel_contribute)
 {
-    //typedef typename PolyMeshType::ScalarType ScalarType;
+    typedef typename PolyMeshType::ScalarType ScalarType;
     typedef typename PolyMeshType::CoordType CoordType;
     typedef typename PolyMeshType::FaceType FaceType;
+    // typedef vcg::Point2<ScalarType> TexCoordType;
 
     TargetPos = std::vector<CoordType>(poly_mesh.vert.size(),CoordType(0,0,0));
+    // TargetTex = std::vector<TexCoordType>(poly_mesh.vert.size(),TexCoordType(0,0));
     std::vector<size_t> NumPos(poly_mesh.vert.size(),0);
     for (size_t i=0;i<poly_mesh.face.size();i++)
     {
@@ -260,12 +271,14 @@ void LaplacianPos(const PolyMeshType &poly_mesh,
             {
                 NumPos[VIndex0]++;
                 TargetPos[VIndex0]+=Pos1;
+                // TargetTex[VIndex0]+=PolyTex[VIndex1];
             }
 
             if ((!only_sel_contribute)||((only_sel_contribute)&&(IsS0)))
             {
                 NumPos[VIndex1]++;
                 TargetPos[VIndex1]+=Pos0;
+                // TargetTex[VIndex1]+=PolyTex[VIndex0];
             }
         }
     }
@@ -273,11 +286,85 @@ void LaplacianPos(const PolyMeshType &poly_mesh,
     for (size_t i=0;i<TargetPos.size();i++)
     {
         if (NumPos[i]<=1)
+        {
             TargetPos[i]=poly_mesh.vert[i].cP();
+            // TargetTex[i]=PolyTex[i];
+        }
         else
         {
             CoordType AvgPos=TargetPos[i]/NumPos[i];
             TargetPos[i]=poly_mesh.vert[i].cP()*Damp + AvgPos*(1-Damp);
+            // TexCoordType AvgTex=TargetTex[i]/NumPos[i];
+            // TargetTex[i]=PolyTex[i]*Damp + AvgTex*(1-Damp);
+        }
+    }
+}
+
+template <class PolyMeshType>
+void LaplacianPos(const PolyMeshType &poly_mesh,
+                  const typename PolyMeshType::ScalarType Damp,
+                  std::vector<typename PolyMeshType::CoordType> &TargetPos,
+                  std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& PolyTex,
+                  std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& TargetTex,
+                  bool only_sel_contribute)
+{
+    typedef typename PolyMeshType::ScalarType ScalarType;
+    typedef typename PolyMeshType::CoordType CoordType;
+    typedef typename PolyMeshType::FaceType FaceType;
+    typedef vcg::Point2<ScalarType> TexCoordType;
+
+    TargetPos = std::vector<CoordType>(poly_mesh.vert.size(),CoordType(0,0,0));
+    TargetTex = std::vector<TexCoordType>(poly_mesh.vert.size(),TexCoordType(0,0));
+    std::vector<size_t> NumPos(poly_mesh.vert.size(),0);
+    for (size_t i=0;i<poly_mesh.face.size();i++)
+    {
+        int sizeP=poly_mesh.face[i].VN();
+        for (int j=0;j<poly_mesh.face[i].VN();j++)
+        {
+            FaceType *oppF=poly_mesh.face[i].FFp(j);
+            //size_t oppI=vcg::tri::Index(poly_mesh,oppF);
+            bool AddContribute=true;
+            //only once for edge
+            if (oppF<&poly_mesh.face[i])AddContribute=false;
+            //if (BlockedF[i])AddContribute=false;
+            //if (BlockedF[oppI])AddContribute=false;
+            if (!AddContribute)continue;
+            CoordType Pos0=poly_mesh.face[i].cP(j);
+            CoordType Pos1=poly_mesh.face[i].cP((j+1)%sizeP);
+            size_t VIndex0=vcg::tri::Index(poly_mesh,poly_mesh.face[i].V(j));
+            size_t VIndex1=vcg::tri::Index(poly_mesh,poly_mesh.face[i].V((j+1)%sizeP));
+            bool IsS0=poly_mesh.vert[VIndex0].IsS();
+            bool IsS1=poly_mesh.vert[VIndex1].IsS();
+
+            if ((!only_sel_contribute)||((only_sel_contribute)&&(IsS1)))
+            {
+                NumPos[VIndex0]++;
+                TargetPos[VIndex0]+=Pos1;
+                TargetTex[VIndex0]+=PolyTex[VIndex1];
+            }
+
+            if ((!only_sel_contribute)||((only_sel_contribute)&&(IsS0)))
+            {
+                NumPos[VIndex1]++;
+                TargetPos[VIndex1]+=Pos0;
+                TargetTex[VIndex1]+=PolyTex[VIndex0];
+            }
+        }
+    }
+
+    for (size_t i=0;i<TargetPos.size();i++)
+    {
+        if (NumPos[i]<=1)
+        {
+            TargetPos[i]=poly_mesh.vert[i].cP();
+            TargetTex[i]=PolyTex[i];
+        }
+        else
+        {
+            CoordType AvgPos=TargetPos[i]/NumPos[i];
+            TargetPos[i]=poly_mesh.vert[i].cP()*Damp + AvgPos*(1-Damp);
+            TexCoordType AvgTex=TargetTex[i]/NumPos[i];
+            TargetTex[i]=PolyTex[i]*Damp + AvgTex*(1-Damp);
         }
     }
 }
@@ -541,7 +628,9 @@ void GetProjectionBasis(const BasicMesh &edge_mesh,
         {
             PBaseTris.SharpEdge.resize(PBaseTris.SharpEdge.size()+1);
             PBaseTris.SharpEdge.back().push_back(EdgeKey);
-            BasisMap[keyPatch]=PBaseTris.SharpEdge.size()-1;
+            BasisMap[keyPatch]=PBaseTris.SharpEdge.size()-1; 
+            // BasisMap: map [patch id pair] to SharpEdge 's index
+            // SharpEdge: for each [patch id pair], store all the sharp edge key pair
         }
         else
         {
@@ -833,11 +922,13 @@ template <class PolyMeshType,class TriMeshType>
 void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
                          const BasicMesh &EdgeM,
                          const typename PolyMeshType::ScalarType Damp,
-                         std::vector<bool> &BlockedV)
+                         std::vector<bool> &BlockedV,
+                         std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& PolyTex)
 {
     typedef typename PolyMeshType::ScalarType ScalarType;
     typedef typename PolyMeshType::CoordType CoordType;
     typedef typename TriMeshType::FaceType TriFaceType;
+    typedef vcg::Point2<ScalarType> TexCoordType;
 
     //select only the one on sharp features
     vcg::tri::UpdateFlags<PolyMeshType>::VertexClearS(PolyM);
@@ -847,7 +938,8 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
 
     //then do one laplacian step
     std::vector<typename PolyMeshType::CoordType> TargetPos;
-    LaplacianPos(PolyM,Damp,TargetPos,true);
+    std::vector<TexCoordType> TargetTex;
+    LaplacianPos(PolyM,Damp,TargetPos,PolyTex,TargetTex,true);
 
     //set value
     for (size_t i=0;i<PolyM.vert.size();i++)
@@ -855,6 +947,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
         if (PolyProjBase.VertProjType[i]!=ProjSharp)continue;
         if (BlockedV[i])continue;
         PolyM.vert[i].P()=TargetPos[i];
+        PolyTex[i]=TargetTex[i];
     }
 
 
@@ -868,6 +961,7 @@ void SmoothSharpFeatures(PolyMeshType &PolyM,ProjectionBase &PolyProjBase,
         ClosestPointEMesh(PolyM.vert[i].P(),EdgeM,IndexE,t,MinD,Clos);
         //TargetPos.push_back(Clos);
         PolyM.vert[i].P()=Clos;
+        PolyTex[i]=EdgeM.edge[IndexE].V(0)->T().P()*t + EdgeM.edge[IndexE].V(1)->T().P()*(1-t);
     }
 }
 
@@ -880,7 +974,8 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
                     SmoothType SType,
                     const typename PolyMeshType::ScalarType Damp,
                     std::vector<bool> &BlockedV,
-                    bool UseSharp)
+                    bool UseSharp,
+                    std::vector<vcg::Point2<typename PolyMeshType::ScalarType>>& PolyTex)
 {
     typedef typename PolyMeshType::CoordType CoordType;
     typedef typename PolyMeshType::ScalarType ScalarType;
@@ -949,7 +1044,15 @@ void SmoothInternal(PolyMeshType &PolyM,TriMeshType &TriM,
             TriFaceType *f=vcg::tri::GetClosestFaceBase(TriM,TriGrid,TestPos,MaxD,MinD,closestPt);
             assert(f!=NULL);
             PolyM.vert[i].P()=closestPt;
+            // Tex
+            CoordType bary;
+            vcg::InterpolationParameters(*f, closestPt, bary);
+            PolyTex[i]=f->WT(0).P()*bary[0] + f->WT(1).P()*bary[1] + f->WT(2).P()*bary[2];
         }
+        // else
+        // {
+            
+        // }
     }
 
     //    int t4=clock();
@@ -1030,20 +1133,78 @@ void MultiCostraintSmooth(PolyMeshType &PolyM,
     vcg::Box3<ScalarType> BB=TriM.bbox;
     BB.Offset(BB.Diag()*0.1);
     TriGrid.Set(TriM.face.begin(),TriM.face.end(),BB);
+    // links: link object ptr with voxels (one to multi), store index of grid also.
+    // grid : store links with index low to high.
 
     for (size_t s=0;s<step_num;s++)
     {
+        typedef vcg::Point2<ScalarType> TexCoordType;
+        std::vector<TexCoordType> PolyWedgeTexCoord(PolyM.vert.size(), TexCoordType(-1,-1));
+        for (size_t i = 0; i < PolyM.face.size(); i++)
+        {
+            for (size_t j = 0; j < 4; j++)
+            {
+                size_t IndexV = vcg::tri::Index(PolyM, PolyM.face[i].V(j));
+                if (PolyWedgeTexCoord[IndexV] != TexCoordType(-1,-1) && 
+                    (PolyWedgeTexCoord[IndexV] - PolyM.face[i].WT(j).P()).Norm() > 0.01) {
+                        BlockedV[IndexV] = true;
+                        std::cout << "Blocked index " << IndexV << std::endl;
+                    }
+                PolyWedgeTexCoord[IndexV] = PolyM.face[i].WT(j).P();
+            }
+        }
+
         //std::cout<<"Smoooth Feature step: "<<s<<std::endl;
         //int t0=clock();
-        SmoothSharpFeatures<PolyMeshType,TriMeshType>(PolyM,PolyProjBase,EdgeM,Damp,BlockedV);
+        SmoothSharpFeatures<PolyMeshType,TriMeshType>(PolyM,PolyProjBase,EdgeM,Damp,BlockedV,PolyWedgeTexCoord);
         //        std::cout<<"Smoooth Internal step: "<<s<<std::endl;
         //        int t1=clock();
+
+
+        // for (size_t i = 0; i < PolyM.face.size(); i++)
+        // {
+        //     for (size_t j = 0; j < 4; j++)
+        //     {
+        //         size_t IndexV = vcg::tri::Index(PolyM, PolyM.face[i].V(j));
+        //         if (!BlockedV[IndexV])
+        //             PolyM.face[i].WT(j).P() = PolyWedgeTexCoord[IndexV];
+        //     }
+        // }
+
+        // for (size_t i = 0; i < BlockedV.size(); i++)
+        //     BlockedV[i] = false;
+        
 
         SmoothInternal<PolyMeshType,TriMeshType>(PolyM,TriM,TriGrid,
                                                  TriProjBase,PolyProjBase,
                                                  back_proj_steps,
                                                  TemplateFit,Damp,
-                                                 BlockedV,true);
+                                                 BlockedV,true, PolyWedgeTexCoord);
+
+        // for (size_t i = 0; i < PolyM.face.size(); i++)
+        // {
+        //     for (size_t j = 0; j < 4; j++)
+        //     {
+        //         size_t IndexV = vcg::tri::Index(PolyM, PolyM.face[i].V(j));
+        //         if (PolyWedgeTexCoord[IndexV] != TexCoordType(-1,-1) && 
+        //             PolyWedgeTexCoord[IndexV] != PolyM.face[i].WT(j).P()) BlockedV[IndexV] = true;
+        //         PolyWedgeTexCoord[IndexV] = PolyM.face[i].WT(j).P();
+        //     }
+        // }
+
+        // for (size_t i = 0; i < PolyM.vert.size(); i++)
+        // {
+            
+        // }
+
+        for (size_t i = 0; i < PolyM.face.size(); i++)
+        {
+            for (size_t j = 0; j < 4; j++)
+            {
+                size_t IndexV = vcg::tri::Index(PolyM, PolyM.face[i].V(j));
+                if (!BlockedV[IndexV]) PolyM.face[i].WT(j).P() = PolyWedgeTexCoord[IndexV];
+            }
+        }
 
         //        int t2=clock();
         //        std::cout<<"Concluded Smoothing step TFeat:"<<t1-t0<<" TInternal:"<<t2-t1<<std::endl;

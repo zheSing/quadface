@@ -1426,6 +1426,8 @@ public:
 
     static void LaplacianPos(MeshType &mesh,
                              std::vector<typename MeshType::CoordType> &AvPos,
+                             std::vector<vcg::Point2<typename MeshType::ScalarType>> &NewTex,
+                             std::vector<vcg::Point2<typename MeshType::ScalarType>> &AvTex,
                              bool OnlySContribute)
     {
 
@@ -1446,11 +1448,13 @@ public:
                 if (addContr0)
                 {
                     AvPos[IndexV1]+=Pos0;
+                    AvTex[IndexV1]+=NewTex[IndexV0];
                     NumDiv[IndexV1]++;
                 }
                 if (addContr1)
                 {
                     AvPos[IndexV0]+=Pos1;
+                    AvTex[IndexV0]+=NewTex[IndexV1];
                     NumDiv[IndexV0]++;
                 }
             }
@@ -1460,6 +1464,7 @@ public:
             //no contributes
             if (NumDiv[i]==0)continue;
             AvPos[i]/=(ScalarType)NumDiv[i];
+            AvTex[i]/=(ScalarType)NumDiv[i];
         }
     }
 
@@ -1494,9 +1499,13 @@ public:
     static void LaplacianNonSelectedEdgeStep(MeshType &mesh,//const std::vector<int>  &FacePatches,
                                          typename MeshType::ScalarType Damp)//,bool FixV)
     {
-        //SelectVertOnMeshPatchBorders(mesh,FacePatches);
-        std::vector<typename MeshType::CoordType> AvPos;
-        LaplacianPos(mesh,AvPos,false);
+        typedef typename MeshType::CoordType CoordType;
+        typedef typename MeshType::ScalarType ScalarType;
+        typedef vcg::Point2<ScalarType> TexCoordType;
+
+        std::vector<TexCoordType> NewTex(mesh.vert.size());
+        std::vector<TexCoordType> AvTex(mesh.vert.size(), TexCoordType(0,0));
+
         //mark the one not selected
         vcg::tri::UpdateFlags<MeshType>::VertexClearV(mesh);
         for (size_t i=0;i<mesh.face.size();i++)
@@ -1509,12 +1518,36 @@ public:
                 mesh.vert[VInd1].SetV();
             }
 
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            for (size_t j = 0; j < 3; j++)
+            {
+                size_t IndexV = vcg::tri::Index(mesh, mesh.face[i].V(j));
+                NewTex[IndexV] = mesh.face[i].WT(j).P();
+            }
+        }
+
+        //SelectVertOnMeshPatchBorders(mesh,FacePatches);
+        std::vector<CoordType> AvPos;
+        LaplacianPos(mesh,AvPos,NewTex,AvTex,false);
         for (size_t i=0;i<mesh.vert.size();i++)
         {
             if (mesh.vert[i].IsV())continue;
             //if (mesh.vert[i].IsV() && FixV)continue;
             mesh.vert[i].P()=mesh.vert[i].P()*Damp+AvPos[i]*(1-Damp);
+            NewTex[i]=NewTex[i]*Damp+AvTex[i]*(1-Damp);
         }
+
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            for (size_t j = 0; j < 3; j++)
+            {
+                size_t IndexV = vcg::tri::Index(mesh,mesh.face[i].V(j));
+                if (!mesh.vert[IndexV].IsV())
+                    mesh.face[i].WT(j).P() = NewTex[IndexV];   
+            }
+        }
+
     }
 
 //    static void LaplacianSelectedEdgeStep(MeshType &mesh,
@@ -1579,6 +1612,19 @@ public:
         std::vector<typename MeshType::CoordType> AvPos(mesh.vert.size(),
                                                         CoordType(0,0,0));
 
+        std::vector<vcg::Point2<ScalarType>> NewTex(mesh.vert.size());
+        std::vector<vcg::Point2<ScalarType>> AvTex(mesh.vert.size(), vcg::Point2<ScalarType>(0,0));
+
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            for (size_t j = 0; j < 3; j++)
+            {
+                size_t VIndex = vcg::tri::Index(mesh, mesh.face[i].V(j));
+                if (!mesh.face[i].IsFaceEdgeS(j))continue;
+                NewTex[VIndex] = mesh.face[i].WT(j).P();
+            }
+        }
+
         //smooth path
         for (size_t i=0;i<mesh.face.size();i++)
             for (size_t j=0;j<3;j++)
@@ -1599,6 +1645,9 @@ public:
                 NumDiv[VInd0]++;
                 AvPos[VInd1]+=Pos0;
                 NumDiv[VInd1]++;
+
+                AvTex[VInd0]+=NewTex[VInd1];
+                AvTex[VInd1]+=NewTex[VInd0];
             }
 
         for (size_t i=0;i<mesh.vert.size();i++)
@@ -1607,11 +1656,24 @@ public:
             //if (NumDiv[i]==0)continue;
             if (NumDiv[i]!=2)continue;
             CoordType TargetPos=AvPos[i]/(ScalarType)NumDiv[i];
+            vcg::Point2<ScalarType> TargetTex=AvTex[i]/(ScalarType)NumDiv[i];
             if (mesh.vert[i].IsB())continue;
             //if (mesh.vert[i].IsV()&&FixV)continue;
             mesh.vert[i].P()=mesh.vert[i].P()*Damp+TargetPos*(1-Damp);
+            NewTex[i]=NewTex[i]*Damp+TargetTex*(1-Damp);
         }
         //vcg::tri::UpdateFlags<MeshType>::FaceClearFaceEdgeS(mesh);
+
+        for (size_t i = 0; i < mesh.face.size(); i++)
+        {
+            for (size_t j = 0; j < 3; j++)
+            {
+                size_t VIndex = vcg::tri::Index(mesh, mesh.face[i].V(j));
+                if (NumDiv[VIndex]!=2) continue;
+                if (mesh.vert[VIndex].IsB()) continue;
+                mesh.face[i].WT(j).P() = NewTex[VIndex];
+            }
+        }
     }
 
     static void ReprojectOn(MeshType &mesh,MeshType &target,
@@ -1778,10 +1840,19 @@ public:
         {
             //save old position in case quality check is needed
             std::vector<CoordType> OldPos;
+            std::vector<vcg::Point2<ScalarType>> OldTex(mesh.vert.size());
             if (MinQ>0)
             {
                 for (size_t i=0;i<mesh.vert.size();i++)
                     OldPos.push_back(mesh.vert[i].P());
+                for (size_t i=0; i<mesh.face.size(); i++)
+                {
+                    for (size_t j=0; j<3; j++)
+                    {
+                        size_t IndexV = vcg::tri::Index(mesh, mesh.face[i].V(j));
+                        OldTex[IndexV] = mesh.face[i].WT(j).P();
+                    }
+                }
             }
 
             //save old normals
@@ -1837,6 +1908,17 @@ public:
                 if (!IsOk)
                 {
                     mesh.vert[IndexV].P()=OldPos[IndexV];
+
+                    FaceType* fp = mesh.vert[IndexV].VFp();
+                    size_t vidx = mesh.vert[IndexV].VFi();
+
+                    while (fp != NULL)
+                    {
+                        fp->WT(vidx).P() = OldTex[IndexV];
+                        FaceType* tmp = fp;
+                        fp = tmp->VFp(vidx);
+                        vidx = tmp->VFi(vidx);
+                    }
                 }
             }
         }
