@@ -195,6 +195,41 @@ public:
         }
     }
 
+    void SetSymmetryFromTableSplit()
+    {
+        std::map<CoordType, std::vector<CoordType>> PosEdgeMap;
+        for (auto pair: SymmetryCoord)
+        {
+            PosEdgeMap[pair.first].push_back(pair.second-pair.first);
+            PosEdgeMap[pair.second].push_back(pair.first-pair.second);
+        }
+        for (size_t i = 0; i < face.size(); i++)
+        {
+            for (size_t j = 0; j < 3; j++)
+            {
+                CoordType P0 = face[i].P0(j);
+                CoordType P1 = face[i].P1(j);
+                CoordType PosEdge = P1 - P0;
+                if (PosEdgeMap.find(P0) != PosEdgeMap.end())
+                {
+                    for (auto edge: PosEdgeMap[P0])
+                    {
+                        if (edge.normalized()* PosEdge.normalized() > 0.99 && edge.Norm() >= PosEdge.Norm())
+                        {
+                            face[i].SetUserBit(symmbit[j]);
+                            break;
+                        }
+                    }
+                    
+                }
+                
+
+            }
+            
+        }
+        
+    }
+
     bool IsConcaveEdge(const FaceType &f0,int IndexE)
     {
         FaceType *f1=f0.cFFp(IndexE);

@@ -876,8 +876,6 @@ private:
                         size_t vert = NodeVertI(curNode.Neigh[i].Node);
                         size_t dir = NodeDirI(curNode.Neigh[i].Node);
                         curNode.SymmTwin = IndexNode(vert, (dir+2)%4);
-                        std::pair<size_t,size_t> tmpair(nodeIndex, curNode.SymmTwin);
-                        
                         break;
                     }
                 }
@@ -1293,6 +1291,8 @@ public:
 
         //initialize Border direction map
         InitBorderDirMap();
+
+        std::cout << "OK\n";
 
         //initialize symmetry nodes
         InitSymmetryMap();

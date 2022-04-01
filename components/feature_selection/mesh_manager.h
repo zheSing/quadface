@@ -808,14 +808,20 @@ public:
             RemPar.targetDeltaFN= BPar.remesher_termination_delta;
             RemPar.surfDistCheck = BPar.surf_dist_check;
 
+            mesh.InitSymmetryCoordsTable();
+
             // FaceEdgeSelInvert(mesh);
 
             //AutoRemesher<MeshType>::Remesh2(mesh,RemPar);
             AutoRemesher<MeshType>::RemeshAdapt(mesh,RemPar,vcg::tri::HasPerWedgeTexCoord(mesh));
 
+            mesh.SetSymmetryFromTableSplit();
+
             // FaceEdgeSelInvert(mesh);
 
-        }
+        }     
+
+
         mesh.InitFeatureCoordsTable();
         mesh.InitSymmetryCoordsTable();
 

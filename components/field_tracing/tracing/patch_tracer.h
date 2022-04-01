@@ -1370,6 +1370,8 @@ private:
         
         std::map<CoordType, size_t> SymmMap;
 
+        vcg::tri::UpdateFlags<MeshType>::VertexClearV(Mesh());
+
         for (size_t i = 0; i < Mesh().face.size(); i++)
         {
             FaceType* fp = &Mesh().face[i];
@@ -1381,24 +1383,33 @@ private:
                     size_t Idx1 = vcg::tri::Index(Mesh(),fp->V1(j));
                     CoordType P0 = fp->P0(j);
                     CoordType P1 = fp->P1(j);
-                    if (SymmMap.find(P0)==SymmMap.end() || SymmMap[P0]!=Idx0)
+                    if (!fp->V0(j)->IsV())
                     {
-                        SymmMap[P0] = Idx0;
+                        fp->V0(j)->SetV();
+                        if (SymmMap.find(P0)==SymmMap.end())
+                        {
+                            SymmMap[P0] = Idx0;
+                        }
+                        else
+                        {
+                            SymmVert[Idx0] = SymmMap[P0];
+                            SymmVert[SymmMap[P0]] = Idx0;
+                        }
                     }
-                    else
+                    if (!fp->V1(j)->IsV())
                     {
-                        SymmVert[Idx0] = SymmMap[P0];
-                        SymmVert[SymmMap[P0]] = Idx0;
+                        fp->V1(j)->SetV();
+                        if (SymmMap.find(P1)==SymmMap.end())
+                        {
+                            SymmMap[P1] = Idx1;
+                        }
+                        else
+                        {
+                            SymmVert[Idx1] = SymmMap[P1];
+                            SymmVert[SymmMap[P1]] = Idx1;
+                        }
                     }
-                    if (SymmMap.find(P1)==SymmMap.end() || SymmMap[P1]!=Idx1)
-                    {
-                        SymmMap[P1] = Idx1;
-                    }
-                    else
-                    {
-                        SymmVert[Idx1] = SymmMap[P1];
-                        SymmVert[SymmMap[P1]] = Idx1;
-                    }
+                    
                 }
             }
         }
@@ -1482,7 +1493,7 @@ private:
                     size_t Emitter, Receiver;
                     VertexEmitter<MeshType>::ComputeSymmetryEmitter(VFGraph,VertOrthoDir,i,Emitter,Receiver);
                     NodeEmitterTypes[Emitter]=TVSymmetry;
-                    NodeEmitterTypes[Receiver]=TVSymmetry;
+                    NodeReceiverTypes[Receiver]=TVSymmetry;
                 }
                 else
                 {

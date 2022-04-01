@@ -483,7 +483,16 @@ public:
 
     bool LoadSymmetryAxis(std::string &SymmPath)
     {
-        if (!HasSymmetryAxis)
+        SymmetryAxis.clear();
+        FILE *f=NULL;
+        f=fopen(SymmPath.c_str(),"rt");
+        if(f==NULL) return false;
+
+        int Num=0;
+        fscanf(f,"%d\n",&Num);
+        std::cout<<"Num "<<Num<<std::endl;
+
+        if (Num!=0 && !HasSymmetryAxis)
         {
             HasSymmetryAxis = true;
             for (size_t i = 0; i < 3; i++)
@@ -493,13 +502,6 @@ public:
             }
         }
 
-        SymmetryAxis.clear();
-        FILE *f=NULL;
-        f=fopen(SymmPath.c_str(),"rt");
-        if(f==NULL) return false;
-        int Num=0;
-        fscanf(f,"%d\n",&Num);
-        std::cout<<"Num "<<Num<<std::endl;
         for (size_t i=0;i<(size_t)Num;i++)
         {
             int FIndex,EIndex;
