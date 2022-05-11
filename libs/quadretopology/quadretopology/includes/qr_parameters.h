@@ -105,6 +105,9 @@ struct Parameters {
     int resultSmoothingLaplacianIterations;
     double resultSmoothingLaplacianNRing;    
 
+    bool isAdapt;
+    std::vector<double> subsideEdgeLength;
+
     Parameters() {
         initialRemeshing = DEFAULTINITIALREMESHING;
         initialRemeshingEdgeFactor = DEFAULTEDGEFACTOR;
@@ -141,6 +144,7 @@ struct Parameters {
         resultSmoothingNRing = DEFAULTRESULTSMOOTHINGNRING;
         resultSmoothingLaplacianIterations = DEFAULTRESULTSMOOTHINGLAPLACIANITERATIONS;
         resultSmoothingLaplacianNRing = DEFAULTRESULTSMOOTHINGLAPLACIANNRING;
+        
     }
 };
 

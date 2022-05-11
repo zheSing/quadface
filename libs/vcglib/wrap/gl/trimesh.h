@@ -488,7 +488,7 @@ namespace vcg
 						glEnable(GL_TEXTURE_2D);
 						glBindTexture(GL_TEXTURE_2D,TMId[curtexname]);
 					}
-					glBegin(GL_TRIANGLES);
+					// glBegin(GL_TRIANGLES);
 
 					while( (partial)?(fp!=face_pointers.end()):(fi!=m->face.end()))
 					{
@@ -516,6 +516,13 @@ namespace vcg
 									glBegin(GL_TRIANGLES);
 								}
 
+								if (f.VN() == 3)
+									glBegin(GL_TRIANGLES);
+								else if (f.VN() == 4)
+									glBegin(GL_QUADS);
+								else 
+									assert(0);
+
 								if(nm == NMPerFace)	glNormal(f.cN());
 								if(nm == NMPerVert)	glNormal(f.V(0)->cN());
 								if(nm == NMPerWedge)glNormal(f.WN(0));
@@ -539,6 +546,16 @@ namespace vcg
 								if(tm==TMPerVert) glTexCoord(f.V(2)->T().P());
 								if( (tm==TMPerWedge)|| (tm==TMPerWedgeMulti)) glTexCoord(f.WT(2).t(0));
 								glVertex(f.V(2)->P());
+
+								if (f.VN() == 4)
+								{
+									if(nm == NMPerVert)	glNormal(f.V(3)->cN());
+									if(nm == NMPerWedge)glNormal(f.WN(3));
+									if(cm == CMPerVert) glColor(f.V(3)->C());
+									if(tm==TMPerVert) glTexCoord(f.V(3)->T().P());
+									if( (tm==TMPerWedge)|| (tm==TMPerWedgeMulti)) glTexCoord(f.WT(3).t(0));
+									glVertex(f.V(3)->P());
+								}
 						}
 
 						if(partial)
@@ -849,7 +866,7 @@ namespace vcg
 					for (size_t i = 0; i < f.VN(); i++)
 					{			
 						if (f.IsD()) continue;
-						glColor4f(.3f,.3f,.3f,.5f);
+						glColor4f(.3f,.3f,.3f,.3f);
 						glVertex(f.V0(i)->P());
 						glVertex(f.V1(i)->P());
 					}

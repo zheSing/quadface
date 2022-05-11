@@ -247,6 +247,10 @@ int main(int argc, char *argv[])
     PathSymm.append("_rem.symm");
     std::cout<<"Loading Symmetry Axis:"<<PathSymm.c_str()<<std::endl;
 
+    // std::string PathA=pathProject;
+    // PathA.append("_ref.adpt");
+    // std::cout<<"Loading Adaptiveness:"<<PathA.c_str()<<std::endl;
+
     //MESH LOAD
     TraceMesh trace_mesh;
     printf("Loading the mesh \n");
@@ -266,6 +270,9 @@ int main(int argc, char *argv[])
     //SYMM LOAD
     bool loadedSymmetry=trace_mesh.LoadSymmetryAxis(PathSymm);
     if (!loadedSymmetry) std::cout << "Symmetry Axis loading failed!\n";
+
+    // bool loadedAdpt=trace_mesh.LoadVertexAdapt(PathA);
+    // assert(loadedAdpt);
 
     trace_mesh.SolveGeometricIssues();
     trace_mesh.UpdateSharpFeaturesFromSelection();
@@ -299,7 +306,8 @@ int main(int argc, char *argv[])
     //TRACING
     PTr.InitTracer(Drift,false);
     RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,force_symmetry,true,meta_mesh_collapse,force_split,true,false);
-    // todo: not finished yet.
+    // recover
+    trace_mesh.RecoverAdapt();
     PTr.SmoothPatches();
     SaveAllData(PTr,pathProject,0,false,false);
 
@@ -349,6 +357,12 @@ int main(int argc, char *argv[])
     trimeshFeaturesC = loadFeatureCorners(featureCFilename);
     std::cout<<"Loaded "<<featureCFilename.size()<<" corner features"<<std::endl;
     loadFeatureCorners(featureCFilename);
+
+    // adpt
+    std::string adaptiveness = pathProject;
+    adaptiveness.append("_p0.adpt");
+    bool adpt = LoadVertexAdapt(to_quad_trimesh, adaptiveness);
+    assert(adpt);
 
     OrientIfNeeded(to_quad_trimesh,trimeshPartitions,trimeshCorners,trimeshFeatures,trimeshFeaturesC);
 
@@ -404,8 +418,9 @@ int main(int argc, char *argv[])
     parameters.repeatLosingConstraintsAlign=true;
 
     parameters.hardParityConstraint=true;
-
+    
     scaleFactor=ScaleFact;
+
 
     fixedChartClusters=300;
 
@@ -416,9 +431,14 @@ int main(int argc, char *argv[])
 
     double EdgeSize=avgEdge(to_quad_trimesh)*scaleFactor;
     std::cout<<"Edge Size "<<EdgeSize<<std::endl;
-    const std::vector<double> edgeFactor(trimeshPartitions.size(), EdgeSize);
+    const std::vector<double> edgeFactor(trimeshPartitions.size(), EdgeSize); //adaptiveness
+    
+    float scaleFactorMin=EdgeSize*0.5;
+    float scaleFactorMax=EdgeSize*2;
 
-    qfp::quadrangulationFromPatches(to_quad_trimesh, trimeshPartitions, trimeshCorners, edgeFactor, parameters, fixedChartClusters, quadmesh, quadmeshPartitions, quadmeshCorners, ilpResult);
+    qfp::AdaptParam aPar(true, scaleFactorMin, scaleFactorMax);
+
+    qfp::quadrangulationFromPatches(to_quad_trimesh, trimeshPartitions, trimeshCorners, edgeFactor, aPar, parameters, fixedChartClusters, quadmesh, quadmeshPartitions, quadmeshCorners, ilpResult);
 
     //SAVE OUTPUT
     std::string outputFilename = pathProject;

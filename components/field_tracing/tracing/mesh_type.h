@@ -136,6 +136,7 @@ public:
     std::vector<std::pair<size_t,size_t> > SharpFeatures;
     std::vector<std::pair<size_t,size_t> > SymmetryAxis;
     std::vector<size_t> SharpCorners;
+    std::vector<double> Adaptiveness;
     bool HasSymmetryAxis = false;
 
     int symmbit[3];
@@ -152,11 +153,34 @@ public:
         vcg::tri::UpdateFlags<TraceMesh>::VertexBorderFromFaceBorder(*this);
     }
 
+    void InitAdapt()
+    {
+        Adaptiveness.resize(VN(), 0);
+        for (size_t i = 0; i < VN(); i++)
+        {
+            Adaptiveness[i] = vert[i].Q();
+        }
+    }
+
+    void RecoverAdapt()
+    {
+        if (VN() != Adaptiveness.size())
+        {
+            std::cout << "Adaptive Error: size not match!\n";
+        }
+        else
+        {
+            for (size_t i = 0; i < VN(); i++)
+            {
+                vert[i].Q() = Adaptiveness[i];
+            }
+        }
+    }
+
     bool LoadField(std::string field_filename)
     {
         int position0=field_filename.find(".ffield");
         int position1=field_filename.find(".rosy");
-
 
         if (position0!=-1)
         {
@@ -177,6 +201,48 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool LoadVertexAdapt(const std::string &filename)
+    {
+        std::cout<<"Loading Vertex Adapt"<<std::endl;
+
+        FILE *f=fopen(filename.c_str(),"rt");
+        if (f==NULL)return false;
+        int Num;
+        fscanf(f,"%d/n",&Num);
+
+        if (vert.size()!=Num)
+        {
+            std::cout<<"Error: number of vertices mismatch!\n";
+            return false;
+        } 
+
+        for (size_t i=0;i<Num;i++)
+        {
+            ScalarType q;
+            fscanf(f,"%lf\n",&q);
+            vert[i].Q() = q;
+        }
+        fclose(f);
+        return true;
+    }
+
+    bool SaveVertexAdapt(const std::string &filename) const
+    {
+        if(filename.empty()) return false;
+        std::ofstream myfile;
+        myfile.open(filename.c_str());
+        size_t num=vert.size();
+        myfile << num<<std::endl;
+
+        for (size_t i = 0; i < num; i++)
+        {
+            // if (vert[i].Q()==0) std::cout<<"Warning: vertex "<<i<<" has apapt equal to 0.\n";
+            myfile << vert[i].Q() << std::endl;
+        }
+        myfile.close();
+        return true;
     }
 
     void ScatterColorByQualityFace()

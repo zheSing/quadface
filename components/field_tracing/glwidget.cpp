@@ -606,7 +606,7 @@ void TW_CALL JoinConcave(void *)
 
 void TW_CALL AddLoops(void *)
 {
-    PTr.TraceLoops(false);
+    PTr.TraceLoops(false,true);
     PTr.UpdatePartitionsFromChoosen();
     PTr.ColorByPartitions();
     UpdateVisualNodes();
@@ -702,7 +702,7 @@ void TW_CALL RecursiveProcess(void *)
 {
     InitStructures();
     //RecursiveProcess<TraceMesh>(PTr,Drift);
-    RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,true,meta_mesh_collapse,force_split);//,interleave_smooth);
+    RecursiveProcess<TracerType>(PTr,Drift, add_only_needed,final_removal,true,true,meta_mesh_collapse,force_split);//,interleave_smooth);
     CurrPatchMode=CMPatchCol;
     drawField=false;
     drawSharpF=false;

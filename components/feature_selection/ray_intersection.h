@@ -22,7 +22,7 @@ public:
     PointType operator()(T t) const { return  ori + dir * t; }
 };
 
-
+  
 template<typename T>
 struct MyIntersection
 {        

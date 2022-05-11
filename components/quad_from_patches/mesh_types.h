@@ -415,6 +415,32 @@ void CheckIntegrity(TriangleMesh &mesh,
 
 }
 
+bool LoadVertexAdapt(TriangleMesh&mesh, const std::string &filename)
+{
+    std::cout<<"Loading Vertex Adapt"<<std::endl;
+
+    FILE *f=fopen(filename.c_str(),"rt");
+    if (f==NULL)return false;
+    int Num;
+    fscanf(f,"%d/n",&Num);
+
+    if (mesh.vert.size()!=Num)
+    {
+        std::cout<<"Error: number of vertices mismatch!\n";
+        return false;
+    } 
+
+    for (size_t i=0;i<Num;i++)
+    {
+        double q;
+        fscanf(f,"%lf\n",&q);
+        mesh.vert[i].Q() = q;
+        std::cout << "dbg " << i << ": " << mesh.vert[i].Q() << std::endl;
+    }
+    fclose(f);
+    return true;
+}
+
 void OrientIfNeeded(TriangleMesh &mesh,
                     std::vector<std::vector<size_t> > &trimeshPartitions,
                     std::vector<std::vector<size_t>> &trimeshCorners,

@@ -65,6 +65,8 @@ void findSubdivisions(
 void findSubdivisions(
         const ChartData& chartData,
         const std::vector<double>& chartEdgeLength,
+        const bool isAdapt,
+        const std::vector<double>& subsideEdgeLength,
         const ILPMethod& method,
         const double alpha,
         const bool isometry,

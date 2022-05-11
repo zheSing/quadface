@@ -27,6 +27,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #define VERT_FIELD_GRAPH
 
 #include "../../feature_selection/symmetry.h"
+#include "../../feature_selection/adaptive_eval.h"
 #include <vcg/math/matrix33.h>
 #include <vcg/complex/algorithms/parametrization/tangent_field_operators.h>
 #include <vcg/complex/algorithms/attribute_seam.h>
@@ -84,6 +85,7 @@ class VertSplitter{
         (void)dstMesh;
         v.P() = f.cP(whichWedge);
         v.T().P() = f.cWT(whichWedge).P();
+        v.Q() = f.V(whichWedge)->cQ();
     }
 
     static bool CompareVertex(const MeshType & m,
@@ -1264,6 +1266,8 @@ public:
         //check if everything is ok
         CheckTangentField();
 
+        // std::cout <<  "4: " << mesh.vert[0].Q() << std::endl;
+
         //collect singularities nodes (must be disabled)
         SingNodes.clear();
         IsSingVert=std::vector<bool>(mesh.vert.size(),false);
@@ -1282,6 +1286,7 @@ public:
             std::cout<<"There are "<<SingNodes.size()<<" singular Nodes"<<std::endl;
         //RemoveSingularities();
 
+        // std::cout <<  "5: " << mesh.vert[0].Q() << std::endl;
 
         //initialize connections
         InitConnections();
@@ -1292,10 +1297,12 @@ public:
         //initialize Border direction map
         InitBorderDirMap();
 
-        std::cout << "OK\n";
+        // std::cout <<  "6: " << mesh.vert[0].Q() << std::endl;
 
         //initialize symmetry nodes
         InitSymmetryMap();
+
+        // std::cout <<  "7: " << mesh.vert[0].Q() << std::endl;
 
         //initialize the rest used for queries
         NodeDist=std::vector<ScalarType>(NumNodes(),0);
@@ -1654,6 +1661,8 @@ void SplitAdjacentSingularities(MeshType &mesh)
             CoordPair CoordK(std::min(Pos0,Pos1),std::max(Pos0,Pos1));
             assert(SplitOps->count(CoordK)>0);
             nv.P()=(*SplitOps)[CoordK];
+            // quality
+            nv.Q()=(v0->Q()+v1->Q())/2;
         }
 
         vcg::TexCoord2<ScalarType> WedgeInterp(vcg::TexCoord2<ScalarType> &t0,
@@ -1789,7 +1798,12 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
     //                                      or it's a single sharp edge not adjacent by others 
     std::cout << "Num of vertices: " << mesh.vert.size() << std::endl;
     SplitAdjacentSingularities(mesh);
-
+    
+    // roughness
+    vcg::tri::Allocator<MeshType>::CompactEveryVector(mesh);
+    AdaptProcess<MeshType>::EvalAdaptiveness(mesh, 1.5, 0.5, 4);
+    AdaptProcess<MeshType>::SharpFeatureAdapt(mesh, 0.8);
+    std::cout <<  "0: " << mesh.vert[0].Q() << std::endl;
 
     //split along marked sharp features
     if (DebugMsg)
@@ -1801,6 +1815,8 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
 
     if (DebugMsg)
         std::cout<<"updating attributes"<<std::endl;
+
+    std::cout <<  "0.1: " << mesh.vert[0].Q() << std::endl;
 
     mesh.UpdateAttributes();
 
@@ -1814,6 +1830,9 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
         std::cout<<"counting non manifold Vert"<<std::endl;
 
     size_t Test1=vcg::tri::Clean<MeshType>::CountNonManifoldVertexFF(mesh);
+
+    std::cout <<  "1: " << mesh.vert[0].Q() << std::endl;
+
     if (Test1>0)
     {
         std::cout<<"WARNING NON MANIFOLD VERTEX SPLIT! "<<std::endl;
@@ -1832,6 +1851,9 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
     vcg::tri::CrossField<MeshType>::UpdateSingularByCross(mesh,true);
     vcg::tri::CrossField<MeshType>::SetVertCrossVectorFromFace(mesh);
 
+
+    // std::cout <<  "2: " << mesh.vert[0].Q() << std::endl;
+
     if (DebugMsg)
         std::cout<<"setting rest pos"<<std::endl;
 
@@ -1844,6 +1866,9 @@ void PreProcessMesh(MeshType &mesh,bool DebugMsg=true)
         std::cout<<"done"<<std::endl;
 
     mesh.InitSingVert();
+    mesh.InitAdapt();
+
+    // std::cout <<  "3: " << mesh.vert[0].Q() << std::endl;
 }
 
 #endif

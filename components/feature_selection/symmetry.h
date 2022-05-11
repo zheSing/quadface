@@ -367,7 +367,7 @@ public:
         return true;
     }
 
-    static size_t TraceAxisByDirection(MeshType& mesh, InterType& inter)
+    static size_t TraceAxisByDirection(MeshType& mesh, InterType& inter, int smooth=3)
     {
         FacePointer fp = &mesh.face[inter.idx];
         if (fp->IsD())
@@ -386,11 +386,11 @@ public:
         CoordType dir0 =  vp0->P() - vp1->P();
         CoordType dir1 = -dir0;
 
-        return 1 + TraceAxisByDirection(vp0, dir0, mesh.symmbit) 
-                 + TraceAxisByDirection(vp1, dir1, mesh.symmbit);
+        return 1 + TraceAxisByDirection(vp0, dir0, mesh.symmbit, smooth) 
+                 + TraceAxisByDirection(vp1, dir1, mesh.symmbit, smooth);
     }
-
-    static size_t TraceAxisByDirection(VertexPointer vp, CoordType dir, int* symmbit, int smooth=3)
+ 
+    static size_t TraceAxisByDirection(VertexPointer vp, CoordType dir, int* symmbit, int smooth)
     {
         if (vp->IsB())
             return 0;

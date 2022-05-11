@@ -5,7 +5,14 @@ include(../../libs/libs.pri)
 HEADERS = \
     glwidget.h \
     triangle_mesh_type.h \
-    mesh_manager.h
+    mesh_manager.h \
+    feature_texture.h \
+    add_vertex.h \
+    bvh.h \
+    history_queue.h \
+    ray_intersection.h \
+    symmetry.h \
+    adaptive_eval.h
 
 SOURCES = \
     glwidget.cpp \

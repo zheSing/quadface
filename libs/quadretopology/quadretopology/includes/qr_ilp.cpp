@@ -68,6 +68,8 @@ GRBLinExpr getGurobiAbsContinuous(GRBModel& model, const GRBLinExpr& value);
 inline void solveILP(
         const ChartData& chartData,
         const std::vector<double>& chartEdgeLength,
+        const bool isAdapt,
+        const std::vector<double>& subsideEdgeLength,
         const ILPMethod& method,
         const double alpha,
         const bool isometry,
@@ -193,9 +195,10 @@ inline void solveILP(
 
                             //If it is not fixed (free)
                             if (!isFixed[subsideId]) {
-                                double edgeLength = chartEdgeLength[cId];
-
+                                double edgeLength = subsideEdgeLength[subsideId];
+                                
                                 double sideSubdivision = subside.length / edgeLength;
+
                                 if (!hardParityConstraint) {
                                     sideSubdivision /= 2.0;
                                 }

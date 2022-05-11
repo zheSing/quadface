@@ -1146,9 +1146,9 @@ void MultiCostraintSmooth(PolyMeshType &PolyM,
             {
                 size_t IndexV = vcg::tri::Index(PolyM, PolyM.face[i].V(j));
                 if (PolyWedgeTexCoord[IndexV] != TexCoordType(-1,-1) && 
-                    (PolyWedgeTexCoord[IndexV] - PolyM.face[i].WT(j).P()).Norm() > 0.01) {
+                    (PolyWedgeTexCoord[IndexV] - PolyM.face[i].WT(j).P()).Norm() > 0.05) 
+                    {
                         BlockedV[IndexV] = true;
-                        std::cout << "Blocked index " << IndexV << std::endl;
                     }
                 PolyWedgeTexCoord[IndexV] = PolyM.face[i].WT(j).P();
             }

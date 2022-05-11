@@ -34,14 +34,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 namespace qfp {
-
 template<class PolyMesh, class TriangleMesh>
 void quadrangulationFromPatches(
     TriangleMesh& trimesh,
     const std::vector<std::vector<size_t>>& trimeshPartitions,
     const std::vector<std::vector<size_t>>& trimeshCorners,
     const std::vector<double>& chartEdgeLength,
-    const QuadRetopology::Parameters& parameters,
+    const AdaptParam& aPar,
+    QuadRetopology::Parameters& parameters,
     const int fixedChartClusters,
     PolyMesh& quadmesh,
     std::vector<std::vector<size_t>>& quadmeshPartitions,
@@ -56,6 +56,41 @@ void quadrangulationFromPatches(
             trimeshPartitions,
             trimeshCorners);
 
+    parameters.subsideEdgeLength = std::vector<double>(chartData.subsides.size(), aPar.scaleFactorMin);
+    parameters.isAdapt = aPar.is_adpt;
+    std::vector<double>& subsideEdgeLength = parameters.subsideEdgeLength;
+    if (aPar.is_adpt)
+    {
+        std::cout << "Min=" << aPar.scaleFactorMin << ", Max=" << aPar.scaleFactorMax << "\n";
+
+        double max = 0, min = std::numeric_limits<double>::max();
+        for (size_t i = 0; i < chartData.subsides.size(); i++)
+        {
+            double sum = 0;
+            const std::vector<size_t>& vertices = chartData.subsides[i].vertices;
+            for (size_t j = 0; j < vertices.size(); j++)  sum += trimesh.vert[vertices[j]].Q();
+            sum /= vertices.size();
+            subsideEdgeLength[i] = sum;
+            if (sum > max) max = sum;
+            if (sum < min) min = sum;
+        }
+        
+        if (min != max)
+        {
+            double length = aPar.scaleFactorMax-aPar.scaleFactorMin;
+            double fct = 1. / (max-min);
+            for (size_t i = 0; i < subsideEdgeLength.size(); i++)
+            {
+                subsideEdgeLength[i] = (1-(subsideEdgeLength[i]-min) * fct) * length + aPar.scaleFactorMin;
+            }
+        }
+
+        // for (size_t i = 0; i < parameters.subsideEdgeLength.size(); i++)
+        // {
+        //     std::cout << i << ": " << parameters.subsideEdgeLength[i] << "\n";
+        // }
+        
+    }
 
     //Initialize ilp results
     ilpResult.clear();

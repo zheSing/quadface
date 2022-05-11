@@ -46,7 +46,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <vcg/complex/algorithms/polygonal_algorithms.h>
 
 #include "fields/field_smoother.h"
-
+#include "adaptive_eval.h"
 #include "feature_texture.h"
 
 // Basic subdivision class
@@ -743,6 +743,11 @@ public:
         ScalarType remesher_aspect_ratio=0.3;
         ScalarType remesher_termination_delta = 10000;
         ScalarType texture_diff=250;
+        ScalarType refScale=1.5;
+        ScalarType minScale=0.5;
+        ScalarType maxScale=5;
+        ScalarType maxScaleDiag=0.3;
+        int adaptStep=8;
         cv::Mat tex_img;
     };
 
@@ -847,6 +852,10 @@ public:
         //THEN SMOOTH THE FIELD
         std::cout << "[fieldComputation] Smooth Field Computation..." << std::endl;
         MeshFieldSmoother<MeshType>::SmoothField(mesh,FieldParam);
+
+        // compute adaptiveness
+        AdaptProcess<MeshType>::EvalAdaptiveness(mesh, BPar.refScale, BPar.minScale, BPar.maxScale, 
+                                                 BPar.adaptStep, BPar.maxScaleDiag, true);
     }
 
     static void SaveAllData(MeshType &tri_mesh,const std::string &pathM)
@@ -858,14 +867,17 @@ public:
         std::string fieldName=projM+std::string("_rem.rosy");
         std::string sharpName=projM+std::string("_rem.sharp");
         std::string symmName=projM+std::string("_rem.symm");
+        std::string adptName=projM+std::string("_rem.adpt");
         std::cout<<"Saving Mesh TO:"<<meshName.c_str()<<std::endl;
         std::cout<<"Saving Field TO:"<<fieldName.c_str()<<std::endl;
         std::cout<<"Saving Sharp TO:"<<sharpName.c_str()<<std::endl;
         std::cout<<"Saving Symm TO:"<<symmName.c_str()<<std::endl;
+        std::cout<<"Saving Adapt TO:"<<adptName.c_str()<<std::endl;
         tri_mesh.SaveTriMesh(meshName.c_str());
         tri_mesh.SaveField(fieldName.c_str());
         tri_mesh.SaveSharpFeatures(sharpName.c_str());
         tri_mesh.SaveSymmetryAxis(symmName.c_str());
+        tri_mesh.SaveVertexAdapt(adptName.c_str());
     }
 
 };

@@ -519,6 +519,8 @@ inline void findSubdivisions(
     return findSubdivisions(
         chartData,
         chartEdgeLength,
+        parameters.isAdapt,
+        parameters.subsideEdgeLength,
         parameters.ilpMethod,
         parameters.alpha,
         parameters.isometry,
@@ -545,6 +547,8 @@ inline void findSubdivisions(
 inline void findSubdivisions(
         const ChartData& chartData,
         const std::vector<double>& chartEdgeLength,
+        const bool isAdapt,
+        const std::vector<double>& subsideEdgeLength,
         const ILPMethod& method,
         const double alpha,
         const bool isometry,
@@ -577,6 +581,8 @@ inline void findSubdivisions(
     internal::solveILP(
         chartData,
         chartEdgeLength,
+        isAdapt, 
+        subsideEdgeLength,
         method,
         alpha,
         isometry,
@@ -609,6 +615,8 @@ inline void findSubdivisions(
         return findSubdivisions(
             chartData,
             chartEdgeLength,
+            isAdapt,
+            subsideEdgeLength,
             method,
             alpha,
             isometry,
@@ -643,6 +651,8 @@ inline void findSubdivisions(
         return findSubdivisions(
             chartData,
             chartEdgeLength,
+            isAdapt,
+            subsideEdgeLength,
             ILPMethod::ABS,
             alpha,
             isometry,

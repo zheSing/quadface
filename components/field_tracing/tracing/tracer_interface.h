@@ -1411,6 +1411,10 @@ void SaveAllData(PatchTracer<MeshType> &PTr,
     featureCorners=featureCorners+"_p"+std::to_string(CurrNum)+".c_feature";
     SaveM.SaveSharpCorners(featureCorners);
 
+    std::string adpativeness=pathProject;
+    adpativeness=adpativeness+"_p"+std::to_string(CurrNum)+".adpt";
+    SaveM.SaveVertexAdapt(adpativeness);
+
     if (save_origFace)
     {
         std::string origfaceP=pathProject;

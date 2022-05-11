@@ -3,6 +3,8 @@
 include(../libs/libs.pri)
 include($$QUADRETOPOLOGY_PATH/quadretopology.pri)
 
+HEADERS += ../components/feature_selection/adaptive_eval.h
+
 SOURCES += \
     quadwild_test.cpp
 
@@ -54,14 +56,14 @@ macx {
 
 ############################ INCLUDES ############################
 
-MESHFIELD_PATH = ../components/field_computation
+MESHFIELD_PATH = ../components/feature_selection
 MESHTRACE_PATH =../components/field_tracing
 QUADRANGULATE_PATH = ../components/quad_from_patches
 
 HEADERS += \
     $$LIBIGL_PATH/include/igl/principal_curvature.h \
     $$QUADRANGULATE_PATH/load_save.h \
-    $$QUADRANGULATE_PATH/quad_from_patches.h \
+    #$$QUADRANGULATE_PATH/quad_from_patches.h \
     $$VCGLIB_PATH/wrap/ply/plylib.h
 
 SOURCES += \

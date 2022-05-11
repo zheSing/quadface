@@ -18,8 +18,8 @@
 #include <vcg/complex/algorithms/voronoi_processing.h>
 #include "triangle_mesh_type.h"
 
-typedef FieldTriMesh MeshType;
-// template<typename MeshType>
+// typedef FieldTriMesh MeshType;
+template<typename MeshType>
 class AdaptProcess
 {
 public:
@@ -71,15 +71,14 @@ public:
         if (fp == nullptr) return;
 
         VV.clear();
-        JpPosType startPos(fp, vp);
-        JpPosType curPos = startPos;
-
+        
         // 1-ring
+        JpPosType curPos(fp, vp);
         do
         {
             VV.push_back(curPos.VFlip());
             curPos.NextFE();
-        } while (startPos != curPos);
+        } while (fp != curPos.F());
     }
 
     // get adj faces of a vertex
@@ -91,21 +90,20 @@ public:
         if (fp == nullptr) return;
 
         VF.clear();
-        JpPosType startPos(fp, vp);
-        JpPosType curPos = startPos;
 
         // 1-ring
+        JpPosType curPos(fp, vp);
         do
         {
             VF.insert(curPos.F());
             curPos.NextFE();
-        } while (startPos != curPos);
+        } while (fp != curPos.F());
     }
 
     static void EvalAdaptiveness(MeshType& mesh, ScalarType scale=3)
     {
         // update normal
-        mesh.UpdateDataStructures();
+        UpdateDataStructures(mesh);
 
         // compute tolerance
         ScalarType Tau = AvgEdge(mesh)*scale;
@@ -160,7 +158,7 @@ public:
                                  bool colorDbg=false)
     {
         // update normal
-        mesh.UpdateDataStructures();
+        UpdateDataStructures(mesh);
         // compute face roughness
         std::vector<ScalarType> FaceRoughness;
         EvalFaceRoughness(mesh, FaceRoughness);
@@ -172,13 +170,14 @@ public:
         // compute tolerance
         size_t count = 0;
         ScalarType Tau = 0;
+        ScalarType area;
         for (size_t i = 0; i < mesh.vert.size(); i++)
         {
             VertexPointer vp = &mesh.vert[i];
             if (!vp->IsS()) continue;
 
             count++;
-            Tau += EvalVertexRoughness(mesh, vp, radius, FaceRoughness);
+            Tau += EvalVertexRoughness(mesh, vp, radius, FaceRoughness, area);
         }
         assert(count);
         Tau /= (ScalarType)count;
@@ -191,19 +190,30 @@ public:
         std::vector<ScalarType> sampleSequence(step);
         ScalarType minRadius = avgE * minScale;
         ScalarType maxRadius = std::min(avgE*maxScale, mesh.bbox.Diag()*maxScaleDiag);
-        ScalarType areaStep = (maxRadius*maxRadius - minRadius*minRadius) / (step-1);
+        // ScalarType areaStep = (maxRadius*maxRadius - minRadius*minRadius) / (step-1);
+        ScalarType radiusStep = (maxRadius-minRadius) / (step-1);
         for (size_t i = 0; i < step; i++)
         {
-            ScalarType curArea = minRadius*minRadius + i*areaStep;
-            sampleSequence[i] = sqrt(curArea);
+            // ScalarType curArea = minRadius*minRadius + i*areaStep;
+            // sampleSequence[i] = sqrt(curArea);
+            sampleSequence[i] = minRadius + i*radiusStep;
         }
+
+        for (size_t i = 0; i < FaceRoughness.size(); i++)
+        {
+            // std::cout << "Face " << i << ": " << FaceRoughness[i] << std::endl;
+        }
+        
 
         // compute max tolerance area for each vertex
         assert(vcg::tri::HasPerVertexQuality(mesh));
         for (size_t i = 0; i < mesh.vert.size(); i++)
         {
             VertexPointer vp = &mesh.vert[i];
-            vp->Q() = EvalAdaptiveness(mesh, vp, Tau, sampleSequence);
+            // vp->Q() = EvalAdaptiveness(mesh, vp, Tau, sampleSequence, FaceRoughness);
+            ScalarType tmp;
+            vp->Q() = EvalVertexRoughness(mesh, vp, avgE*refScale, FaceRoughness, tmp);
+            // std::cout << "Vertex " << i << ": " << vp->Q() << ", " << tmp << std::endl;
         }
 
         // set adaptiveness value as color for debugging
@@ -217,12 +227,48 @@ public:
                 if (curAdpt < minAdpt) minAdpt = curAdpt;
                 if (curAdpt > maxAdpt) maxAdpt = curAdpt;
             }
-            ScalarType factor = (ScalarType)std::numeric_limits<u_char>::max() / (maxAdpt - minAdpt);
+            std::cout << "MAX: " << maxAdpt << ", MIN: " << minAdpt << std::endl;
+            ScalarType factor = (ScalarType)255 / (maxAdpt - minAdpt);
             for (size_t i = 0; i < mesh.vert.size(); i++)
             {
-                mesh.vert[i].C() = (u_char)((mesh.vert[i].Q()-minAdpt) * factor);
+                u_char tmp = (mesh.vert[i].Q()-minAdpt) * factor;
+                mesh.vert[i].C() = vcg::Color4b(tmp, tmp, tmp, 255);
             }
-            
+        }
+    }
+
+    // for sharp feature
+    static void SharpFeatureAdapt(MeshType& mesh, ScalarType alpha=0.75)
+    {
+        assert(alpha > 0.5 && alpha <= 1);
+        vcg::tri::UpdateFlags<MeshType>::VertexClearS(mesh);
+
+        for (size_t i = 0; i < mesh.FN(); i++)
+        {
+            FacePointer fp = &mesh.face[i];
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (!fp->IsFaceEdgeS(j)) continue;
+                if (vcg::face::IsBorder(*fp, j)) continue;
+                if (mesh.HasSymmetryAxis && fp->IsUserBit(mesh.symmbit[j])) continue;
+                fp->V0(j)->SetS();
+                fp->V1(j)->SetS();
+            }
+        }
+
+        ScalarType Min = mesh.vert[0].Q();
+        ScalarType Max = mesh.vert[0].Q();
+        for (size_t i = 0; i < mesh.VN(); i++)
+        {
+            if (mesh.vert[i].Q() < Min) Min = mesh.vert[i].Q();
+            if (mesh.vert[i].Q() > Max) Max = mesh.vert[i].Q();
+        }
+
+        ScalarType thereshold = alpha * (Max - Min) + Min;
+        for (size_t i = 0; i < mesh.VN(); i++)
+        {
+            if (mesh.vert[i].IsS()) 
+                mesh.vert[i].Q() = std::max(mesh.vert[i].Q(), thereshold);
         }
     }
 
@@ -230,15 +276,34 @@ public:
     static ScalarType EvalAdaptiveness(MeshType& mesh,
                                        VertexPointer vp, 
                                        ScalarType Tau,
-                                       std::vector<ScalarType>& sampleSeq)
+                                       const std::vector<ScalarType>& sampleSeq,
+                                       const std::vector<ScalarType>& FaceRoughness)
     {
-        
+        assert(sampleSeq.size() > 0);
+        assert(vp != nullptr);
+        assert(Tau > 0);
+
+        ScalarType tmpArea;
+        ScalarType adaptArea = 0;
+        ScalarType prevRough = 0;
+        for (auto radius: sampleSeq)
+        {
+            // if (EvalVertexRoughness(mesh, vp, radius, FaceRoughness, tmpArea) > Tau) break;
+            ScalarType curRough = EvalVertexRoughness(mesh, vp, radius, FaceRoughness, tmpArea);
+            if (curRough < prevRough || curRough > Tau) break;
+            prevRough = curRough;
+            adaptArea = tmpArea;
+        }
+        return adaptArea==0 ? tmpArea : adaptArea;
     }
 
+
+    // for a given vertex, return roughness inside a tri radius
     static ScalarType EvalVertexRoughness(MeshType& mesh,
                                           VertexPointer vp,
                                           ScalarType radius,
-                                          const std::vector<ScalarType>& FaceRoughness)
+                                          const std::vector<ScalarType>& FaceRoughness,
+                                          ScalarType& area)
     {
         std::set<FacePointer> Faces1ring;
         GetVFStar(vp, Faces1ring);
@@ -274,12 +339,14 @@ public:
             }
             else
             {
-                triArea2 += vcg::DoubleArea(*fp);
+                triArea2 = vcg::DoubleArea(*fp);
             }
 
+            area2 += triArea2;
             roughness += triArea2*FaceRoughness[indexF];
         }
         assert(area2 > 0);
+        area = area2;
 
         return roughness / area2;
     }
@@ -296,7 +363,7 @@ public:
 
 
     // bfs start from a vertex, inside a sphere of radius
-    static ScalarType VertexBFS(MeshType& mesh, VertexPointer vp, ScalarType radius, std::set<FacePointer>& CoverFaces)
+    static void VertexBFS(MeshType& mesh, VertexPointer vp, ScalarType radius, std::set<FacePointer>& CoverFaces)
     {
         // preparation
         CoverFaces.clear();
@@ -317,23 +384,21 @@ public:
             // get 1-ring
             FacePointer fp = curV->VFp();
             assert(fp != nullptr);
-            JpPosType startPos(fp, curV);
-            JpPosType curPos = startPos;
+            JpPosType curPos(fp, curV);
             do
             {
                 VertexPointer adjV = curPos.VFlip();
-                if (adjV->IsV()) continue;
-                if ((adjV->P()-vp->P()).Norm() > radius) continue;
-
-                // for covering faces
-                adjV->SetV();
-                VertexQ.push(adjV);
-                CandidateFaces.insert(curPos.F());
-                CandidateFaces.insert(curPos.FFlip());
-
+                if (!adjV->IsV() && (adjV->P()-vp->P()).Norm() <= radius)
+                {
+                    // for covering faces
+                    adjV->SetV();
+                    VertexQ.push(adjV);
+                    CandidateFaces.insert(curPos.F());
+                    CandidateFaces.insert(curPos.FFlip());
+                }
                 // next junmp pos
                 curPos.NextFE();
-            } while (startPos != curPos);   
+            } while (curPos.F() != fp);   
         }
 
         // cover faces
@@ -397,7 +462,7 @@ public:
     {
         typedef std::pair<ScalarType,ScalarType> AvgVarType;
 
-        mesh.UpdateDataStructures();
+        UpdateDataStructures(mesh);
 
         Roughness.clear();
         Roughness.resize(mesh.face.size());
@@ -411,19 +476,20 @@ public:
             assert(fp != nullptr);
             std::vector<ScalarType> Dials;
 
-            JpPosType startPos(fp, vp);
-            JpPosType curPos = startPos;
-
             // 1-ring
+            JpPosType curPos(fp, vp);
             do
             {
                 FacePointer curFp = curPos.F();
                 FacePointer nextFp = curPos.FFlip();
                 // not border, push dial angle
-                if (curFp != nextFp) Dials.push_back(acos(curFp->N()*nextFp->N()));
+                ScalarType dialcos = curFp->N()*nextFp->N();
+                if (dialcos > 0.99999) dialcos = 1;
+                else if (dialcos < -0.99999) dialcos = -1;
+                if (curFp != nextFp) Dials.push_back(acos(dialcos));
                 // next pos (jump border)
                 curPos.NextFE();
-            } while (startPos != curPos);
+            } while (curPos.F() != fp);
 
             // 
             assert(Dials.size());
@@ -437,6 +503,14 @@ public:
                 var += (Dials[j]-avg) * (Dials[j]-avg);
             var /= Dials.size();
             Vertex1ring[i] = AvgVarType(avg, var);
+
+            // std::cout << i << ": ";
+            // for (size_t j = 0; j < Dials.size(); j++)
+            // {
+            //     std::cout << Dials[j] << " ";
+            // }
+            // std::cout << "\n";
+            
         }
 
         // face roughness
@@ -453,6 +527,7 @@ public:
             }
             if (deno < 1e-5) Roughness[i] = 0;
             else Roughness[i] = nume / deno;
+            // std::cout << i << ": " << nume << " / " << deno << std::endl;
         }
     }
 
@@ -472,6 +547,18 @@ public:
             size_t indexV = vcg::tri::Index(mesh, vps[i]);
             mesh.vert[indexV].SetS();
         }
+    }
+
+    static void UpdateDataStructures(MeshType& mesh)
+    {
+        vcg::tri::Clean<MeshType>::RemoveUnreferencedVertex(mesh);
+        vcg::tri::Allocator<MeshType>::CompactEveryVector(mesh);
+
+        vcg::tri::UpdateBounding<MeshType>::Box(mesh);
+        vcg::tri::UpdateNormal<MeshType>::PerVertexNormalizedPerFace(mesh);
+        vcg::tri::UpdateNormal<MeshType>::PerFaceNormalized(mesh);
+        vcg::tri::UpdateTopology<MeshType>::FaceFace(mesh);
+        vcg::tri::UpdateTopology<MeshType>::VertexFace(mesh);
     }
     
 

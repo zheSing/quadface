@@ -29,6 +29,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <quadretopology/quadretopology.h>
 
 namespace qfp {
+  
+struct AdaptParam{
+    bool is_adpt = true;
+    double scaleFactorMin;
+    double scaleFactorMax;
+    AdaptParam(double adpt, double min=-1, double max=-1): 
+        is_adpt(adpt), scaleFactorMin(min), scaleFactorMax(max) {}
+};
 
 template<class PolyMesh, class TriangleMesh>
 void quadrangulationFromPatches(
@@ -36,7 +44,8 @@ void quadrangulationFromPatches(
     const std::vector<std::vector<size_t>>& trimeshPartitions,
     const std::vector<std::vector<size_t>>& trimeshCorners,
     const std::vector<double>& chartEdgeLength,
-    const QuadRetopology::Parameters& parameters,
+    const AdaptParam& aPar,
+    QuadRetopology::Parameters& parameters,
     const int fixedChartClusters,
     PolyMesh& quadmesh,
     std::vector<std::vector<size_t>>& quadmeshPartitions,

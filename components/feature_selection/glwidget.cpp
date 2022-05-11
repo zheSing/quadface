@@ -48,6 +48,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include "history_queue.h"
 #include "add_vertex.h"
 #include "symmetry.h"
+#include "adaptive_eval.h"
 #include "triangle_mesh_type.h"
 // #include "poly_mesh_type.h"
 #include <wrap/qt/trackball.h>
@@ -103,6 +104,12 @@ ScalarType Multiplier=2;
 ScalarType SharpFactor=6;
 ScalarType alpha=0.3;
 //ScalarType sharp_feature_thr=45;
+ScalarType refScale=1.5;
+ScalarType minScale=0.5;
+ScalarType maxScale=5;
+ScalarType maxScaleDiag=0.3;
+int adaptStep=8;
+vcg::GLW::TextureMode colormode = vcg::GLW::TMPerWedge;     /// the current drawmode
 
 
 int xMouse,yMouse;
@@ -168,6 +175,13 @@ void DoBatchProcess ()
     BPar.sharp_feature_thr=sharp_feature_thr;
     BPar.surf_dist_check=surf_dist_check;
     BPar.UpdateSharp=do_init_feature;
+
+    BPar.adaptStep=adaptStep;
+    BPar.refScale=refScale;
+    BPar.minScale=minScale;
+    BPar.maxScale=maxScale;
+    BPar.maxScaleDiag=maxScaleDiag;
+    
     MeshPrepocess<FieldTriMesh>::BatchProcess(tri_mesh,BPar,FieldParam);
     drawfield=true;
 }
@@ -376,6 +390,11 @@ void TW_CALL InitBorderFeature(void *)
     }
 }
 
+void TW_CALL EvalAdaptiveness(void *)
+{
+    AdaptProcess<FieldTriMesh>::EvalAdaptiveness(tri_mesh, refScale, minScale, maxScale, adaptStep, maxScaleDiag, true);
+}
+
 void TW_CALL SymmConfirm(void *)
 {
     // vcg::Point4<ScalarType> plane;
@@ -418,8 +437,8 @@ void TW_CALL InitThrFeature(void *)
 void SetFieldBarSizePosition(QWidget *w)
 {
     int params[2];
-    params[0] = QTDeviceWidth(w) / 3;
-    params[1] = QTDeviceHeight(w) / 1.8;
+    params[0] = QTDeviceWidth(w) / 4;
+    params[1] = QTDeviceHeight(w) / 1.5;
     TwSetParam(barQuad, NULL, "size", TW_PARAM_INT32, 2, params);
     params[0] = QTLogicalToDevice(w, 10);
     params[1] = 30;//QTDeviceHeight(w) - params[1] - QTLogicalToDevice(w, 10);
@@ -434,7 +453,12 @@ void InitFieldBar(QWidget *w)
 
         barQuad = TwNewBar("QuadWild");
 
-        // SetFieldBarSizePosition(w);
+        SetFieldBarSizePosition(w);
+
+        TwEnumVal colormodes[2] = { {vcg::GLW::TMNone, "VertColor"}, {vcg::GLW::TMPerWedge, "Texture"}};
+        // Create a type for the enum shapeEV
+        TwType colorMode = TwDefineEnum("DrawMode", colormodes, 2);
+        TwAddVarRW(barQuad, "Draw Mode", colorMode, &colormode, " keyIncr='<' keyDecr='>' help='Change color mode.' ");
 
         TwAddButton(barQuad, "AddVertices", AddVertices, 0, "label='AddVertices'");
         TwAddButton(barQuad, "SelectFeatures", SelectFeatures, 0, "label='SelectFeatures'");
@@ -443,7 +467,7 @@ void InitFieldBar(QWidget *w)
         TwAddSeparator(barQuad, "sep1", "label=''");
         TwAddButton(barQuad, "InitTexFeature", InitTexFeature, 0, "label='InitTexFeature'");
         TwAddButton(barQuad, "InitBorderFeature", InitBorderFeature, 0, "label='InitBorderFeature'");
-        TwAddVarRW(barQuad, "sharp_feature_thr", TW_TYPE_DOUBLE, &sharp_feature_thr," label='Sharp Degree'");
+        TwAddVarRW(barQuad, "sharp_feature_thr", TW_TYPE_DOUBLE, &sharp_feature_thr, "label='Sharp Degree'");
         TwAddButton(barQuad, "InitThrFeature", InitThrFeature, 0, "label='InitThrFeature'");
 
         TwAddSeparator(barQuad, "sep2", "label=''");
@@ -473,6 +497,15 @@ void InitFieldBar(QWidget *w)
         TwAddVarRW(barQuad, "Do_Remesh", TW_TYPE_BOOLCPP, &do_remesh, "label='Do_Remesh'");
         TwAddButton(barQuad, "BatchProcess", BatchProcess, 0, "label='Batch Process'");
         TwAddButton(barQuad, "SaveData", SaveData, 0, "label='SaveData'");
+
+
+        TwAddSeparator(barQuad, "sep5", "label=''");
+        TwAddVarRW(barQuad, "Reference_Scale", TW_TYPE_DOUBLE, &refScale, "label='Reference_Scale'");
+        TwAddVarRW(barQuad, "Minimum_Scale", TW_TYPE_DOUBLE, &minScale, "label='Minimum_Scale'");
+        TwAddVarRW(barQuad, "Maximum_Scale", TW_TYPE_DOUBLE, &maxScale, "label='Maximum_Scale'");
+        TwAddVarRW(barQuad, "Step", TW_TYPE_INT32, &adaptStep, "label='Step'");
+        TwAddVarRW(barQuad, "Maximum_Scale_Diag", TW_TYPE_DOUBLE, &maxScaleDiag, "label='Maximum_Scale_Diag'");
+        TwAddButton(barQuad, "Eval_Adaptiveness", EvalAdaptiveness, 0, "label='Eval_Adaptiveness'");
 
         // TwAddButton(barQuad,"AutoRemesh",AutoRemesh,0,"label='AutoRemesh'");
 
@@ -728,7 +761,8 @@ void GLWidget::paintGL ()
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, tID);
         }
-        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerFace,vcg::GLW::TMPerWedge);
+        glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerVert,vcg::GLW::TMNone);
+        // glWrap.Draw(vcg::GLW::DMFlatWire,vcg::GLW::CMPerVert,vcg::GLW::TMPerWedge);
         //glWrap.Draw(vcg::GLW::DMSmooth,vcg::GLW::CMNone,vcg::GLW::TMNone);
     }
 
@@ -741,7 +775,7 @@ void GLWidget::paintGL ()
 
     if (drawfield)
     {
-        vcg::GLField<FieldTriMesh>::GLDrawFaceField(tri_mesh,false,false,0.007);
+        vcg::GLField<FieldTriMesh>::GLDrawFaceField(tri_mesh,false,false,0.002);
         vcg::GLField<FieldTriMesh>::GLDrawSingularity(tri_mesh);
     }
 

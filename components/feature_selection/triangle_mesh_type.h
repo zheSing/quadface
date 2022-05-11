@@ -391,6 +391,45 @@ public:
         return true;
     }
 
+    bool LoadVertexAdapt(const std::string &filename)
+    {
+        std::cout<<"Loading Vertex Adapt"<<std::endl;
+
+        FILE *f=fopen(filename.c_str(),"rt");
+        if (f==NULL)return false;
+        int Num;
+        fscanf(f,"%d/n",&Num);
+
+        if (vert.size()!=Num)
+        {
+            std::cout<<"Error: number of vertices mismatch!\n";
+            return false;
+        } 
+
+        for (size_t i=0;i<Num;i++)
+        {
+            ScalarType q;
+            fscanf(f,"%lf\n",&q);
+            vert[i].Q() = q;
+        }
+        fclose(f);
+        return true;
+    }
+
+    bool SaveVertexAdapt(const std::string &filename) const
+    {
+        if(filename.empty()) return false;
+        std::ofstream myfile;
+        myfile.open(filename.c_str());
+        size_t num=vert.size();
+        myfile << num<<std::endl;
+
+        for (size_t i = 0; i < num; i++)
+            myfile << vert[i].Q() << std::endl;
+        myfile.close();
+        return true;
+    }
+
     bool LoadField(std::string field_filename)
     {
         int position0=field_filename.find(".ffield");
@@ -459,6 +498,35 @@ public:
                 else
                     Fopp->FKind[IOpp]=ETConvex;
             }
+        }
+        fclose(f);
+        return true;
+    }
+
+    bool LoadSymmetry(const std::string& filename)
+    {
+        std::cout<<"Loading Symmetry Features"<<std::endl;
+        for (size_t i=0;i<face.size();i++)
+        {
+            for (size_t j=0;j<3;j++)
+            {
+                face[i].ClearUserBit(symmbit[j]);
+            }
+        }
+
+        FILE *f=fopen(filename.c_str(),"rt");
+        if (f==NULL)return false;
+        int Num;
+        fscanf(f,"%d/n",&Num);
+
+        for (size_t i=0;i<Num;i++)
+        {
+            int IndexF,IndexE;
+            fscanf(f,"%d,%d/n",&IndexF,&IndexE);
+            assert((IndexE>=0)&&(IndexE<3));
+            assert((IndexF>=0)&&(IndexF<face.size()));
+
+            face[IndexF].SetUserBit(symmbit[IndexE]);
         }
         fclose(f);
         return true;
